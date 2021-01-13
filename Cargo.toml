@@ -1,0 +1,19 @@
+[package]
+name = "fem"
+version = "0.1.0"
+authors = ["Rod Conan <rconan@gmto.org>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0.119", features = ["derive"] }
+serde-pickle = "0.6.2"
+
+[dev-dependencies]
+gmt-m1 = {path = "../gmt-m1" }
+plotters = "0.3.0"
+datax = { path = "../datax" }
+complot = { path = "../complot" }
+spade = "1.8.2"
+nalgebra = "0.24.0"
