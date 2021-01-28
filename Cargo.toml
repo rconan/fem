@@ -7,6 +7,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.38"
+gmt-kpp = { path = "../gmt-kpp" }
+nalgebra = "0.24.0"
+num-complex = "0.3.1"
+optust = { git = "https://github.com/rconan/optust.git", branch = "main" }
 serde = { version = "1.0.119", features = ["derive"] }
 serde-pickle = "0.6.2"
 
@@ -15,5 +20,12 @@ gmt-m1 = {path = "../gmt-m1" }
 plotters = "0.3.0"
 datax = { path = "../datax" }
 complot = { path = "../complot" }
+geotrans = { path = "../geotrans" }
 spade = "1.8.2"
 nalgebra = "0.24.0"
+rstar = "0.8.2"
+rayon = "1.5.0"
+rustfft = "5.0.1"
+
+[profile.release]
+debug = true
