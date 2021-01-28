@@ -93,11 +93,12 @@ impl StateSpace2x2 {
                 let iqb = iqm * &bb * tau.sqrt();
                 let ciq = tau.sqrt() * &cc * iqm;
                 let dd = &cc * iqm * &bb * (0.5 * tau);
+                println!("D sum: {}", dd.norm() * 1e9);
                 (
                     q,
                     DMatrix::from_column_slice(iqb.nrows(), iqb.ncols(), iqb.as_slice()),
                     DMatrix::from_column_slice(ciq.nrows(), ciq.ncols(), ciq.as_slice()),
-                    Some(dd),
+                    if dd.norm() < 1e-9 { None } else { Some(dd) },
                 )
             }
             Exponential(tau) => {
@@ -117,8 +118,13 @@ impl StateSpace2x2 {
                     (x * x * (ezpxy - ezmxy) / (2. * z)).re,
                     ((zmxy * ezmxy + zpxy * ezpxy) / (2. * z)).re,
                 );
-                let bd = ia*(ad-i)*bb;
-                (ad,  DMatrix::from_column_slice(bd.nrows(), bd.ncols(), bd.as_slice()), cc, None)
+                let bd = ia * (ad - i) * bb;
+                (
+                    ad,
+                    DMatrix::from_column_slice(bd.nrows(), bd.ncols(), bd.as_slice()),
+                    cc,
+                    None,
+                )
             }
         };
         Self {
@@ -137,6 +143,25 @@ impl StateSpace2x2 {
         if let Some(ref dd) = self.dd {
             self.y += dd * &u;
         };
+        self.x = self.aa * self.x + &self.bb * u;
+        self.y.as_slice()
+    }
+    pub fn alt_solve(&mut self, u: &[f64]) -> &[f64] {
+        let u = DVector::from_column_slice(u);
+        let x0 = self.x[0];
+        let x1 = self.x[0];
+        let c = self.cc.row(0).to_owned();
+        self.y.iter_mut().zip(c.iter()).for_each(|(y, c)| {
+            *y = c * x0;
+        });
+        //        self.y = &self.cc * self.x;
+        /*
+        let bu = &self.bb * u;
+        let aa = self.aa.as_slice().to_owned();
+        let (a, b, c, d) = (aa[0], aa[2], aa[1], aa[3]);
+        self.x[0] = a * x0 + b * x1 + bu[0];
+        self.x[1] = c * x0 + d * x1 + bu[1];
+        */
         self.x = self.aa * self.x + &self.bb * u;
         self.y.as_slice()
     }

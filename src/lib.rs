@@ -14,6 +14,9 @@ pub use fem::FEM;
 pub mod state_space;
 pub use state_space::{StateSpace2x2, DiscreteApproximation, SerdeStateSpace2x2};
 
+pub mod bilinear;
+pub use bilinear::Bilinear;
+
 pub fn load_io<P: AsRef<Path>>(path: P) -> Result<BTreeMap<String, Vec<IO>>, Box<dyn Error>> {
     let f = File::open(path)?;
     let r = BufReader::with_capacity(1_000_000, f);
@@ -30,6 +33,14 @@ impl ToPickle for Vec<f64> {
     }
 }
 impl ToPickle for SerdeStateSpace2x2 {
+    fn to_pickle<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
+        let mut f = File::create(path)?;
+        pkl::to_writer(&mut f, &self, true)?;
+        Ok(())
+    }
+
+}
+impl ToPickle for Bilinear {
     fn to_pickle<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
         let mut f = File::create(path)?;
         pkl::to_writer(&mut f, &self, true)?;

@@ -27,5 +27,5 @@ rstar = "0.8.2"
 rayon = "1.5.0"
 rustfft = "5.0.1"
 
-[profile.release]
-debug = true
+#[profile.release]
+#debug = true

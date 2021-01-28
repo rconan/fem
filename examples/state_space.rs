@@ -1,4 +1,4 @@
-use fem::{DiscreteApproximation::*, StateSpace2x2};
+use fem::{DiscreteApproximation::*, StateSpace2x2, Bilinear};
 use plotters::prelude::*;
 use nalgebra as na;
 
@@ -6,10 +6,15 @@ fn main() {
     let omega = 12.5; //2.*std::f64::consts::PI*2.;
     let zeta = 2e-2;
     let tau = 0.5e-3;
-    let mut ss = StateSpace2x2::from_second_order(Exponential(tau), omega, zeta, None, None);
+    let mut ss = StateSpace2x2::from_second_order(BiLinear(tau), omega, zeta, None, None);
     println!("a: {}", ss.aa);
     println!("b: {}", ss.bb);
     println!("c: {}", ss.cc);
+
+    let mut bl = Bilinear::from_second_order(tau, omega, zeta, vec![1.], vec![1.]);
+    println!("q: {:?}", bl.q);
+    println!("m: {:?}", bl.m);
+
     let u = vec![0.];
     ss.x = na::Vector2::new(1.,0.);
     let n = 10000;

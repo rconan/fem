@@ -1,22 +1,24 @@
-use fem::{IOTraits, FEM, ToPickle};
+use fem::{IOTraits, ToPickle, FEM};
 use nalgebra as na;
-use std::time::Instant;
+use rayon::prelude::*;
 use serde_pickle as pkl;
 use std::fs::File;
-use rayon::prelude::*;
+use std::time::Instant;
 
 struct Timer {
-    time: Instant
+    time: Instant,
 }
 impl Timer {
     pub fn tic() -> Self {
-        Self{ time: Instant::now()}
+        Self {
+            time: Instant::now(),
+        }
     }
     pub fn toc(self) -> f64 {
         self.time.elapsed().as_secs_f64()
     }
     pub fn print_toc(self) {
-        println!("... in {:3}s",self.toc());
+        println!("... in {:3}s", self.toc());
     }
 }
 
@@ -30,32 +32,37 @@ fn main() {
     fem.outputs.off();
     fem.outputs.on("MC_M2_lcl_6D");
     println!("in/out: {}/{}", fem.inputs.n_on(), fem.outputs.n_on());
-    fem.inputs2modes().to_pickle("examples/forces_2_modes.pkl").unwrap();
+    fem.inputs2modes()
+        .to_pickle("examples/forces_2_modes.pkl")
+        .unwrap();
 
     let tic = Timer::tic();
+    let sampling = 2000.;
     println!("Building 2x2 state space models ...");
-    let mut ss = fem.state_space(2e3);
+    let mut ss = fem.state_space(sampling);
+    //    let mut ss = fem.state_space(sampling);
     tic.print_toc();
     println!("# of state space models: {}", ss.len());
-    println!("{}", ss[0]);
-    println!("{}", ss[0].aa);
-    ss[0].to_serde().to_pickle("examples/ss0.pkl").unwrap();
+    //println!("{}", ss[0]);
+    //println!("{}", ss[0].aa);
+    ss[0].to_pickle("examples/bl0.pkl").unwrap();
 
     let mut u = vec![0.; fem.inputs.n_on()];
     u[0] = 1.;
-    let tic = Timer::tic();
+    let duration = 5.;
+    let n = (duration * sampling) as usize;
+    let mut y: Vec<Vec<f64>> = vec![vec![0.; fem.outputs.n_on()]; n];
+    
     println!("Running model ...");
-    let y: Vec<_> = (0..10000)
-        .map(|_| {
-            let z = na::DVector::zeros(fem.outputs.n_on());
-            ss.iter_mut()
-                .fold(z, |mut y, m| {
-                    m.solve(&u);
-                    y += &m.y;
-                    y
-                }).as_slice().to_vec()
-        })
-        .collect();
+    let tic = Timer::tic();
+    y.iter_mut().for_each(|y_step| {
+        ss.iter_mut().fold(y_step, |y, m| {
+            y.iter_mut().zip(m.solve(&u)).for_each(|(yc, y)| {
+                *yc += y;
+            });
+            y
+        });
+    });
     /*
     ss.par_iter_mut().for_each(|m| {
         (0..10000).for_each(|_| {
@@ -68,6 +75,6 @@ fn main() {
     //println!("y dim1: {:?}", y[0].len());
     //println!("y[0]: {:?}",y[9]);
 
-    //let mut f = File::create("examples/y.pkl").unwrap();
-    //pkl::to_writer(&mut f, &y, true).unwrap();
+    let mut f = File::create("examples/y.pkl").unwrap();
+    pkl::to_writer(&mut f, &y, true).unwrap();
 }
