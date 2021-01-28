@@ -19,7 +19,7 @@ pub struct IOData {
     #[serde(rename = "exciteIDs")]
     excite_ids: Option<Vec<u32>>,
     pub descriptions: String,
-    indices: Vec<u32>,
+    pub indices: Vec<u32>,
     pub properties: Properties,
 }
 /// Fem input/output 2 states: on or off
