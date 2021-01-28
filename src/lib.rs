@@ -8,10 +8,33 @@ use std::path::Path;
 pub mod io;
 pub use io::{IOData, IO};
 
+pub mod fem;
+pub use fem::FEM;
+
+pub mod state_space;
+pub use state_space::{StateSpace2x2, DiscreteApproximation, SerdeStateSpace2x2};
+
 pub fn load_io<P: AsRef<Path>>(path: P) -> Result<BTreeMap<String, Vec<IO>>, Box<dyn Error>> {
     let f = File::open(path)?;
     let r = BufReader::with_capacity(1_000_000, f);
     Ok(pkl::from_reader(r)?)
+}
+pub trait ToPickle {
+    fn to_pickle<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>>;
+}
+impl ToPickle for Vec<f64> {
+    fn to_pickle<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
+        let mut f = File::create(path)?;
+        pkl::to_writer(&mut f, &self, true)?;
+        Ok(())
+    }
+}
+impl ToPickle for SerdeStateSpace2x2 {
+    fn to_pickle<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {
+        let mut f = File::create(path)?;
+        pkl::to_writer(&mut f, &self, true)?;
+        Ok(())
+    }
 }
 
 pub trait IOTraits {
