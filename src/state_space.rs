@@ -1,11 +1,7 @@
 use nalgebra::{DMatrix, DVector, Matrix2, RowDVector, Vector2};
 use num_complex::Complex;
 use serde::Serialize;
-use serde_pickle as pkl;
-use std::error::Error;
 use std::fmt;
-use std::fs::File;
-use std::path::Path;
 
 #[derive(Debug, Serialize, Clone)]
 pub enum DiscreteApproximation {
@@ -149,7 +145,7 @@ impl StateSpace2x2 {
     pub fn alt_solve(&mut self, u: &[f64]) -> &[f64] {
         let u = DVector::from_column_slice(u);
         let x0 = self.x[0];
-        let x1 = self.x[0];
+        //let x1 = self.x[0];
         let c = self.cc.row(0).to_owned();
         self.y.iter_mut().zip(c.iter()).for_each(|(y, c)| {
             *y = c * x0;
