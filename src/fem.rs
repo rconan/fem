@@ -1,6 +1,6 @@
+use super::Bilinear;
 use super::IOTraits;
 use super::IO;
-use super::{DiscreteApproximation, StateSpace2x2, Bilinear};
 use anyhow::{Context, Result};
 use nalgebra as na;
 use serde::Deserialize;
@@ -68,12 +68,7 @@ impl FEM {
             })
             .flatten()
             .collect();
-        println!("indices: {}", indices.len());
         let n = self.inputs.n();
-        println!(
-            "inputs_to_modal_forces: {}",
-            self.inputs_to_modal_forces.len()
-        );
         self.inputs_to_modal_forces
             .chunks(n)
             .flat_map(|x| {
@@ -118,10 +113,10 @@ impl FEM {
         let tau = 1. / sampling_rate;
         let modes_2_nodes =
             na::DMatrix::from_row_slice(self.outputs.n_on(), self.n_modes(), &self.modes2outputs());
-        println!("modes 2 nodes: {:?}",modes_2_nodes.shape());
+        println!("modes 2 nodes: {:?}", modes_2_nodes.shape());
         let forces_2_modes =
             na::DMatrix::from_row_slice(self.n_modes(), self.inputs.n_on(), &self.inputs2modes());
-        println!("forces 2 modes: {:?}",forces_2_modes.shape());
+        println!("forces 2 modes: {:?}", forces_2_modes.shape());
         let w = self.eigen_frequencies_to_radians();
         let zeta = &self.proportional_damping_vec;
         /*
@@ -139,7 +134,7 @@ impl FEM {
             })
             .collect()
         */
-            (0..self.n_modes())
+        (0..self.n_modes())
             .map(|k| {
                 let b = forces_2_modes.row(k);
                 let c = modes_2_nodes.column(k);
