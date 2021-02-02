@@ -1,6 +1,6 @@
 use fem::{IOTraits, ToPickle, FEM};
-use nalgebra as na;
-use rayon::prelude::*;
+//use nalgebra as na;
+//use rayon::prelude::*;
 use serde_pickle as pkl;
 use std::fs::File;
 use std::time::Instant;
@@ -25,13 +25,12 @@ impl Timer {
 fn main() {
     let tic = Timer::tic();
     println!("Loading FEM ...");
-    let mut fem = FEM::from_pkl("examples/modal_state_space_model_2ndOrder.pkl").unwrap();
+    let mut fem = FEM::from_pkl("examples/modal_state_space_model_2ndOrder_v1.pkl").unwrap();
+    println!("FEM\n{}",fem);
     tic.print_toc();
-    fem.inputs.off();
-    fem.inputs.on("OSS_TopEnd_6F");
-    fem.outputs.off();
-    fem.outputs.on("MC_M2_lcl_6D");
-    println!("in/out: {}/{}", fem.inputs.n_on(), fem.outputs.n_on());
+    fem.keep_input(4);
+    fem.keep_output(24);
+    println!("FEM\n{}",fem);
     fem.inputs2modes()
         .to_pickle("examples/forces_2_modes.pkl")
         .unwrap();
@@ -47,11 +46,11 @@ fn main() {
     //println!("{}", ss[0].aa);
     ss[0].to_pickle("examples/bl0.pkl").unwrap();
 
-    let mut u = vec![0.; fem.inputs.n_on()];
+    let mut u = vec![0.; fem.n_inputs()];
     u[0] = 1.;
-    let duration = 5.;
+    let duration = 100.;
     let n = (duration * sampling) as usize;
-    let mut y: Vec<Vec<f64>> = vec![vec![0.; fem.outputs.n_on()]; n];
+    let mut y: Vec<Vec<f64>> = vec![vec![0.; fem.n_outputs()]; n];
     
     println!("Running model ...");
     let tic = Timer::tic();
