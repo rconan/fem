@@ -89,7 +89,7 @@ impl IOTraits for BTreeMap<String, Vec<IO>> {
             });
         self
     }
-    /// Turns on the given output for entries that match the give predicate
+    /// Turns on the given `io` for entries that match the give predicate
     fn on_by<F>(&mut self, io_name: &str, pred: F) -> &mut Self
     where
         F: Fn(&IOData) -> bool,
