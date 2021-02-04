@@ -1,4 +1,4 @@
-use super::Bilinear;
+use super::Exponential;
 use super::IO;
 use anyhow::{Context, Result};
 use nalgebra as na;
@@ -69,19 +69,21 @@ impl FEM {
             .filter_map(|x| x.as_ref())
             .fold(0usize, |a, x| a + x.len())
     }
-    pub fn keep_input(&mut self, id: usize) {
-        self.inputs.iter_mut().enumerate().for_each(|(k,x)| {
-            if k!=id {
-                *x = None;
+    pub fn keep_inputs(&mut self, id: &[usize]) -> &mut Self {
+        self.inputs.iter_mut().enumerate().for_each(|(k,i)| {
+            if !id.contains(&k) {
+                *i = None
             }
         });
+        self
     }
-    pub fn keep_output(&mut self, id: usize) {
-        self.outputs.iter_mut().enumerate().for_each(|(k,x)| {
-            if k!=id {
-                *x = None;
+    pub fn keep_outputs(&mut self, id: &[usize]) -> &mut Self {
+        self.outputs.iter_mut().enumerate().for_each(|(k,i)| {
+            if !id.contains(&k) {
+                *i = None
             }
         });
+        self
     }
     /// Returns the inputs 2 modes transformation matrix for the turned-on inputs
     pub fn inputs2modes(&mut self) -> Vec<f64> {
@@ -139,7 +141,7 @@ impl FEM {
         modes_2_nodes * d * forces_2_modes
     }
     /// State space
-    pub fn state_space(&mut self, sampling_rate: f64) -> Vec<Bilinear> {
+    pub fn state_space(&mut self, sampling_rate: f64) -> Vec<Exponential> {
         let tau = 1. / sampling_rate;
         let modes_2_nodes =
             na::DMatrix::from_row_slice(self.n_outputs(), self.n_modes(), &self.modes2outputs());
@@ -168,7 +170,7 @@ impl FEM {
             .map(|k| {
                 let b = forces_2_modes.row(k);
                 let c = modes_2_nodes.column(k);
-                Bilinear::from_second_order(
+                Exponential::from_second_order(
                     tau,
                     w[k],
                     zeta[k],

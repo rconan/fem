@@ -9,13 +9,15 @@ pub mod io;
 pub use io::{IOData, IO};
 
 pub mod fem;
-pub use fem::FEM;
+pub use fem::{FEM,fem_io};
 
 pub mod state_space;
 pub use state_space::{StateSpace2x2, DiscreteApproximation, SerdeStateSpace2x2};
 
 pub mod bilinear;
 pub use bilinear::Bilinear;
+pub mod exponential;
+pub use exponential::Exponential;
 
 pub fn load_io<P: AsRef<Path>>(path: P) -> Result<BTreeMap<String, Vec<IO>>, Box<dyn Error>> {
     let f = File::open(path)?;
