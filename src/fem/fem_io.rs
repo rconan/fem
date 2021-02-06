@@ -65,7 +65,7 @@ fem_io!(Inputs:
         "MC_M2_PZT_S7_F",
         MCM2PZTS7F,
         "MC_M2_lcl_force_6F",
-        MCM2LclForce6F,
+        MCM2Lcl6F,
         "MC_M2_small_S1_6F",
         MCM2SmallS16F,
         "MC_M2_small_S2_6F",

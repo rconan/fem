@@ -50,6 +50,7 @@ impl FEM {
         let v: serde_pickle::Value =
             serde_pickle::from_reader(r).context(format!("Cannot read {}", path))?;
         Ok(pkl::from_value(v).context(format!("Failed to load {}", path))?)
+
     }
     /// Gets the number of modes
     pub fn n_modes(&self) -> usize {

@@ -23,7 +23,7 @@ impl Timer {
 fn main() {
     let tic = Timer::tic();
     println!("Loading wind loads ...");
-    let mut wind = WindLoads::from_pickle("examples/trimmer_finest_mesh_20Hz.pkl").unwrap();
+    let mut wind = WindLoads::from_pickle("examples/trimmer_finest_mesh_20Hz.neu.pkl").unwrap();
     println!(
         "Time range: [{};{}]",
         wind.time.first().unwrap(),
@@ -50,6 +50,7 @@ fn main() {
         fem.state_space.as_ref().unwrap().len()
     );
 
+    wind.n_sample /= 10;
     println!("# of steps: {}", wind.n_sample);
     let mut u = vec![0f64; 6];
     u[0] = 1.;

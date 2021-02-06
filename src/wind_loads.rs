@@ -1,28 +1,63 @@
 use super::fem_io;
+use anyhow::{Context, Result};
 use serde;
 use serde::Deserialize;
 use serde_pickle as pkl;
-use std::error::Error;
+use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
+macro_rules! outputs {
+    ($($name:expr, $variant:ident),+) => {
+        #[derive(Deserialize, Debug)]
+        pub enum Outputs {
+            $(#[serde(rename = $name)]
+              $variant(Vec<Vec<f64>>)),+
+        }
+        impl Outputs {
+            pub fn len(&self) -> usize {
+                match self {
+                    $(Outputs::$variant(io) => io.len()),+
+                }
+            }
+            pub fn io(&self) -> &Vec<Vec<f64>> {
+                match self {
+                    $(Outputs::$variant(io) => io),+
+                }
+            }
+            pub fn match_fem(&self, fem: &fem_io::Inputs, count: usize) -> Option<&[f64]> {
+                match (fem,self) {
+                    $((fem_io::Inputs::$variant(_),Outputs::$variant(v)) => {
+                        Some(v[count].as_slice())
+                    }),+
+                    _ => None
+                }
+            }
+        }
+    };
+}
+
+outputs!(
+    "OSS_TopEnd_6F",
+    OSSTopEnd6F,
+    "OSS_Truss_6F",
+    OSSTruss6F,
+    "OSS_GIR_6F",
+    OSSGIR6F,
+    "OSS_CRING_6F",
+    OSSCRING6F,
+    "OSS_Cell_lcl_6F",
+    OSSCellLcl6F,
+    "OSS_M1_lcl_6F",
+    OSSM1Lcl6F,
+    "MC_M2_lcl_force_6F",
+    MCM2Lcl6F
+);
+
 #[derive(Deserialize)]
 pub struct WindLoads {
-    #[serde(rename = "OSS_TopEnd_6F")]
-    pub oss_topend_6f: Option<Vec<Vec<f64>>>,
-    #[serde(rename = "OSS_Truss_6F")]
-    pub oss_truss_6f: Option<Vec<Vec<f64>>>,
-    #[serde(rename = "OSS_GIR_6F")]
-    pub oss_gir_6f: Option<Vec<Vec<f64>>>,
-    #[serde(rename = "OSS_CRING_6F")]
-    pub oss_cring_6f: Option<Vec<Vec<f64>>>,
-    #[serde(rename = "OSS_Cell_lcl_6F")]
-    pub oss_cell_lcl_6f: Option<Vec<Vec<f64>>>,
-    #[serde(rename = "OSS_M1_lcl_6F")]
-    pub oss_m1_lcl_6f: Option<Vec<Vec<f64>>>,
-    #[serde(rename = "MC_M2_lcl_force_6F")]
-    pub mc_m2_lcl_6f: Option<Vec<Vec<f64>>>,
+    pub outputs: Vec<Option<Outputs>>,
     pub time: Vec<f64>,
     #[serde(default)]
     count: usize,
@@ -30,80 +65,29 @@ pub struct WindLoads {
     pub n_sample: usize,
 }
 impl WindLoads {
-    pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn Error>> {
+    pub fn from_pickle<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path> + fmt::Display + Copy,
+    {
         let f = File::open(path)?;
         let r = BufReader::with_capacity(1_000_000_000, f);
-        let mut wind: WindLoads = pkl::from_reader(r)?;
+        let v: serde_pickle::Value =
+            serde_pickle::from_reader(r).context(format!("Cannot read {}", path))?;
+        let mut wind: Self = pkl::from_value(v).context(format!("Failed to load {}", path))?;
+        //       let mut wind: WindLoads = pkl::from_reader(r)?;
         wind.n_sample = wind
-            .oss_topend_6f
-            .as_ref()
-            .or(wind
-                .oss_truss_6f
-                .as_ref()
-                .or(wind
-                    .oss_gir_6f
-                    .as_ref()
-                    .or(wind.oss_cring_6f.as_ref().or(wind
-                        .oss_cell_lcl_6f
-                        .as_ref()
-                        .or(wind.oss_m1_lcl_6f.as_ref().or(wind.mc_m2_lcl_6f.as_ref()))))))
-            .ok_or("No wind load found")?
-            .len();
+            .outputs
+            .iter()
+            .filter_map(|x| x.as_ref())
+            .next()
+            .map_or(0, |x| x.len());
         Ok(wind)
     }
     pub fn dispatch(&mut self, fem: &fem_io::Inputs) -> Option<&[f64]> {
-        match fem {
-            fem_io::Inputs::OSSTopEnd6F(_) => {
-                if let Some(v) = &self.oss_topend_6f {
-                    Some(v[self.count - 1].as_slice())
-                } else {
-                    None
-                }
-            }
-            fem_io::Inputs::OSSTruss6F(_) => {
-                if let Some(v) = &self.oss_truss_6f {
-                    Some(v[self.count - 1].as_slice())
-                } else {
-                    None
-                }
-            }
-            fem_io::Inputs::OSSGIR6F(_) => {
-                if let Some(v) = &self.oss_gir_6f {
-                    Some(v[self.count - 1].as_slice())
-                } else {
-                    None
-                }
-            }
-            fem_io::Inputs::OSSCRING6F(_) => {
-                if let Some(v) = &self.oss_cring_6f {
-                    Some(v[self.count - 1].as_slice())
-                } else {
-                    None
-                }
-            }
-            fem_io::Inputs::OSSCellLcl6F(_) => {
-                if let Some(v) = &self.oss_cell_lcl_6f {
-                    Some(v[self.count - 1].as_slice())
-                } else {
-                    None
-                }
-            }
-            fem_io::Inputs::OSSM1Lcl6F(_) => {
-                if let Some(v) = &self.oss_m1_lcl_6f {
-                    Some(v[self.count - 1].as_slice())
-                } else {
-                    None
-                }
-            }
-            fem_io::Inputs::MCM2LclForce6F(_) => {
-                if let Some(v) = &self.mc_m2_lcl_6f {
-                    Some(v[self.count - 1].as_slice())
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
+        self.outputs
+            .iter()
+            .filter_map(|x| x.as_ref().and_then(|x| x.match_fem(&fem, self.count - 1)))
+            .next()
     }
 }
 impl Iterator for WindLoads {
