@@ -59,9 +59,10 @@ with open("inputs.pkl", "wb") as f:
 with open("outputs.pkl", "wb") as f:
     pickle.dump(outs_dict, f)
 """
-
+inlist = [{k:v} for (k,v) in ins_dict.items()] 
+outlist = [{k:v} for (k,v) in outs_dict.items()]
 fem = {"modelDescription": bytes(data["modelDescription"].flatten().tolist()).decode(),
-       "inputs":ins_dict, "outputs":outs_dict,
+       "inputs":inlist, "outputs":outlist,
        "eigenfrequencies": data["eigenfrequencies"].flatten().tolist(),
        "inputs2ModalF": data["inputs2ModalF"].flatten().tolist(),
        "modalDisp2Outputs": data["modalDisp2Outputs"].flatten().tolist(),
