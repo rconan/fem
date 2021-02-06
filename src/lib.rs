@@ -8,6 +8,9 @@ use std::path::Path;
 pub mod io;
 pub use io::{IOData, IO};
 
+pub mod wind_loads;
+pub use wind_loads::WindLoads;
+
 pub mod fem;
 pub use fem::{FEM,fem_io};
 

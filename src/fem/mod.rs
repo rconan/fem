@@ -1,7 +1,7 @@
-use super::Exponential;
-use super::IO;
+use super::{Exponential, WindLoads, IO};
 use anyhow::{Context, Result};
 use nalgebra as na;
+use rayon::prelude::*;
 use serde;
 use serde::Deserialize;
 use serde_pickle as pkl;
@@ -34,16 +34,21 @@ pub struct FEM {
     /// mode shapes damping coefficients
     #[serde(rename = "proportionalDampingVec")]
     pub proportional_damping_vec: Vec<f64>,
+    #[serde(skip, default)]
+    pub state_space: Option<Vec<Exponential>>,
+    #[serde(skip, default)]
+    pub u: Option<Vec<f64>>,
 }
 impl FEM {
     /// Loads a FEM model saved in a second order from in a pickle file
-    pub fn from_pkl<P>(path: P) -> Result<FEM>
+    pub fn from_pickle<P>(path: P) -> Result<FEM>
     where
         P: AsRef<Path> + fmt::Display + Copy,
     {
         let f = File::open(path).context(format!("File {} not found", path))?;
         let r = BufReader::with_capacity(1_000_000, f);
-        let v: serde_pickle::Value = serde_pickle::from_reader(r).unwrap();
+        let v: serde_pickle::Value =
+            serde_pickle::from_reader(r).context(format!("Cannot read {}", path))?;
         Ok(pkl::from_value(v).context(format!("Failed to load {}", path))?)
     }
     /// Gets the number of modes
@@ -70,7 +75,7 @@ impl FEM {
             .fold(0usize, |a, x| a + x.len())
     }
     pub fn keep_inputs(&mut self, id: &[usize]) -> &mut Self {
-        self.inputs.iter_mut().enumerate().for_each(|(k,i)| {
+        self.inputs.iter_mut().enumerate().for_each(|(k, i)| {
             if !id.contains(&k) {
                 *i = None
             }
@@ -78,7 +83,7 @@ impl FEM {
         self
     }
     pub fn keep_outputs(&mut self, id: &[usize]) -> &mut Self {
-        self.outputs.iter_mut().enumerate().for_each(|(k,i)| {
+        self.outputs.iter_mut().enumerate().for_each(|(k, i)| {
             if !id.contains(&k) {
                 *i = None
             }
@@ -140,15 +145,15 @@ impl FEM {
         );
         modes_2_nodes * d * forces_2_modes
     }
-    /// State space
-    pub fn state_space(&mut self, sampling_rate: f64) -> Vec<Exponential> {
+    /// build state space
+    pub fn build(&mut self, sampling_rate: f64) -> &mut Self {
         let tau = 1. / sampling_rate;
         let modes_2_nodes =
             na::DMatrix::from_row_slice(self.n_outputs(), self.n_modes(), &self.modes2outputs());
-        println!("modes 2 nodes: {:?}", modes_2_nodes.shape());
+        //println!("modes 2 nodes: {:?}", modes_2_nodes.shape());
         let forces_2_modes =
             na::DMatrix::from_row_slice(self.n_modes(), self.n_inputs(), &self.inputs2modes());
-        println!("forces 2 modes: {:?}", forces_2_modes.shape());
+        //println!("forces 2 modes: {:?}", forces_2_modes.shape());
         let w = self.eigen_frequencies_to_radians();
         let zeta = &self.proportional_damping_vec;
         /*
@@ -166,19 +171,32 @@ impl FEM {
             })
             .collect()
         */
-        (0..self.n_modes())
-            .map(|k| {
-                let b = forces_2_modes.row(k);
-                let c = modes_2_nodes.column(k);
-                Exponential::from_second_order(
-                    tau,
-                    w[k],
-                    zeta[k],
-                    b.clone_owned().as_slice().to_vec(),
-                    c.as_slice().to_vec(),
-                )
-            })
-            .collect()
+        self.state_space = Some(
+            (0..self.n_modes())
+                .map(|k| {
+                    let b = forces_2_modes.row(k);
+                    let c = modes_2_nodes.column(k);
+                    Exponential::from_second_order(
+                        tau,
+                        w[k],
+                        zeta[k],
+                        b.clone_owned().as_slice().to_vec(),
+                        c.as_slice().to_vec(),
+                    )
+                })
+                .collect(),
+        );
+        self
+    }
+    pub fn set_u(&mut self, wind: &mut WindLoads) -> &mut Self {
+        self.u = Some(
+            self.inputs
+                .iter()
+                .filter_map(|x| x.as_ref())
+                .flat_map(|x| wind.dispatch(x).unwrap().to_vec())
+                .collect(),
+        );
+        self
     }
 }
 impl fmt::Display for FEM {
@@ -188,7 +206,7 @@ impl fmt::Display for FEM {
             .iter()
             .filter_map(|x| x.as_ref())
             .enumerate()
-            .map(|(k,x)| format!(" #{:02} {}", k, x))
+            .map(|(k, x)| format!(" #{:02} {}", k, x))
             .collect::<Vec<String>>()
             .join("\n");
         let outs = self
@@ -196,7 +214,7 @@ impl fmt::Display for FEM {
             .iter()
             .filter_map(|x| x.as_ref())
             .enumerate()
-            .map(|(k,x)| format!(" #{:02} {}", k, x))
+            .map(|(k, x)| format!(" #{:02} {}", k, x))
             .collect::<Vec<String>>()
             .join("\n");
         write!(
@@ -211,6 +229,39 @@ impl fmt::Display for FEM {
         )
     }
 }
+impl Iterator for FEM {
+    type Item = Vec<f64>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let n = self.n_outputs();
+        match &self.u {
+            Some(u) => self.state_space.as_mut().and_then(|ss| {
+                Some(
+                    ss.par_iter_mut()
+                        .fold(
+                            || vec![0f64; n],
+                            |mut a: Vec<f64>, m| {
+                                a.iter_mut().zip(m.solve(&u)).for_each(|(yc, y)| {
+                                    *yc += y;
+                                });
+                                a
+                            },
+                        )
+                        .reduce(
+                            || vec![0f64; n],
+                            |mut a: Vec<f64>, b: Vec<f64>| {
+                                a.iter_mut().zip(b.iter()).for_each(|(a, b)| {
+                                    *a += *b;
+                                });
+                                a
+                            },
+                        ),
+                )
+            }),
+            None => None,
+        }
+    }
+}
+
 /*
 impl fmt::Display for FEM {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
