@@ -1,6 +1,6 @@
 %%
 %clear
-%load("modal_state_space_model_2ndOrder")
+load("modal_state_space_model_2ndOrder")
 %%
 s  = table2struct(inputTable);
 ws = struct();
