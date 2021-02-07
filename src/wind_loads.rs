@@ -7,6 +7,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::boxed::Box;
 
 macro_rules! outputs {
     ($($name:expr, $variant:ident),+) => {
@@ -83,9 +84,10 @@ impl WindLoads {
             .map_or(0, |x| x.len());
         Ok(wind)
     }
-    pub fn outputs(&self) -> std::slice::Iter<'_, Option<Outputs>> {
-        self.outputs
+    pub fn outputs(&self) -> Box<dyn Iterator<Item=&Outputs> + '_> {
+        Box::new(self.outputs
             .iter()
+            .filter_map(|x| x.as_ref()))
     }
     pub fn dispatch(&self, fem: &fem_io::Inputs) -> Option<&[f64]> {
         self.outputs
