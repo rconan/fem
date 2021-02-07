@@ -50,7 +50,6 @@ impl FEM {
         let v: serde_pickle::Value =
             serde_pickle::from_reader(r).context(format!("Cannot read {}", path))?;
         Ok(pkl::from_value(v).context(format!("Failed to load {}", path))?)
-
     }
     /// Gets the number of modes
     pub fn n_modes(&self) -> usize {
@@ -189,12 +188,13 @@ impl FEM {
         );
         self
     }
-    pub fn set_u(&mut self, wind: &mut WindLoads) -> &mut Self {
+    pub fn set_u(&mut self, wind: &WindLoads) -> &mut Self {
         self.u = Some(
             self.inputs
                 .iter()
-                .filter_map(|x| x.as_ref())
-                .flat_map(|x| wind.dispatch(x).unwrap().to_vec())
+                .filter_map(|x| x.as_ref().and_then(|x| wind.dispatch(x)))
+                .flatten()
+                .cloned()
                 .collect(),
         );
         self

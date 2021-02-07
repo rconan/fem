@@ -26,7 +26,7 @@ macro_rules! outputs {
                     $(Outputs::$variant(io) => io),+
                 }
             }
-            pub fn match_fem(&self, fem: &fem_io::Inputs, count: usize) -> Option<&[f64]> {
+            pub fn match_io(&self, fem: &fem_io::Inputs, count: usize) -> Option<&[f64]> {
                 match (fem,self) {
                     $((fem_io::Inputs::$variant(_),Outputs::$variant(v)) => {
                         Some(v[count].as_slice())
@@ -83,10 +83,14 @@ impl WindLoads {
             .map_or(0, |x| x.len());
         Ok(wind)
     }
-    pub fn dispatch(&mut self, fem: &fem_io::Inputs) -> Option<&[f64]> {
+    pub fn outputs(&self) -> std::slice::Iter<'_, Option<Outputs>> {
         self.outputs
             .iter()
-            .filter_map(|x| x.as_ref().and_then(|x| x.match_fem(&fem, self.count - 1)))
+    }
+    pub fn dispatch(&self, fem: &fem_io::Inputs) -> Option<&[f64]> {
+        self.outputs
+            .iter()
+            .filter_map(|x| x.as_ref().and_then(|x| x.match_io(&fem, self.count - 1)))
             .next()
     }
 }
