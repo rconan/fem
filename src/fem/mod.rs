@@ -1,4 +1,4 @@
-use super::{Exponential, WindLoads, IO ,IOData};
+use super::{Exponential, IOData, WindLoads, IO};
 use anyhow::{Context, Result};
 use nalgebra as na;
 use rayon::prelude::*;
@@ -90,10 +90,12 @@ impl FEM {
             if !id.contains(&k) {
                 *i = None
             } else {
-                i.as_mut().map(|i| i.as_mut().iter_mut().for_each(|io| {
-                    *io = io.clone().switch_off();
-                    *io = io.clone().switch_on_by(pred);
-                }));
+                i.as_mut().map(|i| {
+                    i.iter_mut().for_each(|io| {
+                        *io = io.clone().switch_off();
+                        *io = io.clone().switch_on_by(pred);
+                    })
+                });
             }
         });
         self
@@ -113,7 +115,7 @@ impl FEM {
             .iter()
             .filter_map(|x| x.as_ref())
             .flat_map(|v| {
-                v.io().iter().filter_map(|x| match x {
+                v.iter().filter_map(|x| match x {
                     IO::On(io) => Some(io.indices.clone()),
                     IO::Off(_) => None,
                 })
@@ -139,7 +141,7 @@ impl FEM {
             .iter()
             .filter_map(|x| x.as_ref())
             .flat_map(|v| {
-                v.io().iter().filter_map(|x| match x {
+                v.iter().filter_map(|x| match x {
                     IO::On(io) => Some(io.indices.clone()),
                     IO::Off(_) => None,
                 })

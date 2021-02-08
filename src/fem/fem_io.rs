@@ -2,6 +2,7 @@ use super::IO;
 use serde;
 use serde::Deserialize;
 use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 macro_rules! fem_io {
     ($io:ident: $($name:expr, $variant:ident),+) => {
@@ -18,12 +19,17 @@ macro_rules! fem_io {
                     }),+
                 }
             }
-            pub fn io(&self) -> &[IO] {
+        }
+        impl Deref for $io {
+            type Target = [IO];
+            fn deref(&self) -> &Self::Target {
                 match self {
                     $($io::$variant(io) => io),+
                 }
             }
-            pub fn as_mut(&mut self) -> &mut [IO] {
+        }
+        impl DerefMut for $io {
+            fn deref_mut(&mut self) -> &mut Self::Target {
                 match self {
                     $($io::$variant(io) => io),+
                 }
