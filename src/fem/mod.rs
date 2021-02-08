@@ -1,4 +1,4 @@
-use super::{Exponential, WindLoads, IO};
+use super::{Exponential, WindLoads, IO ,IOData};
 use anyhow::{Context, Result};
 use nalgebra as na;
 use rayon::prelude::*;
@@ -78,6 +78,22 @@ impl FEM {
         self.inputs.iter_mut().enumerate().for_each(|(k, i)| {
             if !id.contains(&k) {
                 *i = None
+            }
+        });
+        self
+    }
+    pub fn keep_inputs_by<F>(&mut self, id: &[usize], pred: F) -> &mut Self
+    where
+        F: Fn(&IOData) -> bool + Copy,
+    {
+        self.inputs.iter_mut().enumerate().for_each(|(k, i)| {
+            if !id.contains(&k) {
+                *i = None
+            } else {
+                i.as_mut().map(|i| i.as_mut().iter_mut().for_each(|io| {
+                    *io = io.clone().switch_off();
+                    *io = io.clone().switch_on_by(pred);
+                }));
             }
         });
         self
