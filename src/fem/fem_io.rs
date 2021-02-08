@@ -13,10 +13,17 @@ macro_rules! fem_io {
         impl $io {
             pub fn len(&self) -> usize {
                 match self {
-                    $($io::$variant(io) => io.len()),+
+                    $($io::$variant(io) => {
+                        io.iter().fold(0,|a,x| a + x.is_on() as usize)
+                    }),+
                 }
             }
             pub fn io(&self) -> &[IO] {
+                match self {
+                    $($io::$variant(io) => io),+
+                }
+            }
+            pub fn as_mut(&mut self) -> &mut [IO] {
                 match self {
                     $($io::$variant(io) => io),+
                 }
@@ -25,7 +32,7 @@ macro_rules! fem_io {
         impl fmt::Display for $io {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
-                    $($io::$variant(io) => write!(f,"{:>24}: [{:5}]",$name,io.len())),+
+                    $($io::$variant(_) => write!(f,"{:>24}: [{:5}]",$name,self.len())),+
                 }
             }
         }
