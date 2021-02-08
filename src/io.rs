@@ -42,6 +42,16 @@ impl IO {
             IO::On(_) => self
         }
     }
+    pub fn switch_on_by<F>(self, pred: F) -> Self
+    where
+        F: Fn(&IOData) -> bool,
+    {
+        match self {
+            IO::Off(data) if pred(&data) => IO::On(data),
+            IO::Off(_) => self,
+            IO::On(_) => self
+        }
+    }
     pub fn is_on(&self) -> bool {
         match self {
             IO::On(_) => true,
