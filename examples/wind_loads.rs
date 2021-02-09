@@ -57,7 +57,7 @@ fn main() {
     println!("Running model ...");
     let tic = Timer::tic();
 
-    let mut y: Vec<Vec<f64>> = Vec::with_capacity(wind.n_sample*fem.n_outputs());
+    let mut y: Vec<Vec<f64>> = Vec::with_capacity(wind.n_sample * fem.n_outputs());
     while let Some(_) = wind.next() {
         if let Some(fem_y) = fem.set_u(&mut wind).next() {
             y.push(fem_y);
@@ -67,7 +67,6 @@ fn main() {
         }
     }
     tic.print_toc();
-
     let mut f = File::create("examples/wind_loads_y.pkl").unwrap();
     pkl::to_writer(&mut f, &y, true).unwrap();
 }
