@@ -24,11 +24,6 @@ fn main() {
     let tic = Timer::tic();
     println!("Loading wind loads ...");
     let mut wind = WindLoads::from_pickle("examples/trimmer_finest_mesh_20Hz.neu.pkl").unwrap();
-    println!(
-        "Time range: [{};{}]",
-        wind.time.first().unwrap(),
-        wind.time.last().unwrap()
-    );
     tic.print_toc();
 
     let tic = Timer::tic();
@@ -57,15 +52,11 @@ fn main() {
     println!("Running model ...");
     let tic = Timer::tic();
 
-    let mut y: Vec<Vec<f64>> = Vec::with_capacity(wind.n_sample*fem.n_outputs());
-    while let Some(_) = wind.next() {
-        if let Some(fem_y) = fem.set_u(&mut wind).next() {
-            y.push(fem_y);
-        } else {
-            println!("Something went awfully wrong!");
-            break;
-        }
+    let mut y: Vec<Vec<f64>> = Vec::with_capacity(wind.n_sample * fem.n_outputs());
+    for _ in 0..wind.n_sample {
+        fem.set_u(&mut wind.outputs).next();
     }
+
     tic.print_toc();
 
     let mut f = File::create("examples/wind_loads_y.pkl").unwrap();

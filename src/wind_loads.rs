@@ -134,25 +134,7 @@ impl WindLoadsIter {
  */
 
 impl WindLoads {
-    pub fn from_pickle<P>(path: P) -> Result<Self>
-    where
-        P: AsRef<Path> + fmt::Display + Copy,
-    {
-        let f = File::open(path)?;
-        let r = BufReader::with_capacity(1_000_000_000, f);
-        let v: serde_pickle::Value =
-            serde_pickle::from_reader(r).context(format!("Cannot read {}", path))?;
-        let mut wind: Self = pkl::from_value(v).context(format!("Failed to load {}", path))?;
-        //       let mut wind: WindLoads = pkl::from_reader(r)?;
-        wind.n_sample = wind
-            .loads
-            .iter()
-            .filter_map(|x| x.as_ref())
-            .next()
-            .map_or(0, |x| x.len());
-        Ok(wind)
-    }
-    pub fn from_pickle_alt<P>(path: P) -> Result<WindLoadsIter>
+    pub fn from_pickle<P>(path: P) -> Result<WindLoadsIter>
     where
         P: AsRef<Path> + fmt::Display + Copy,
     {
@@ -161,7 +143,11 @@ impl WindLoads {
         let v: serde_pickle::Value =
             serde_pickle::from_reader(r).context(format!("Cannot read {}", path))?;
         let wind: Self = pkl::from_value(v).context(format!("Failed to load {}", path))?;
-        //       let mut wind: WindLoads = pkl::from_reader(r)?;
+        println!(
+            "Time range: [{};{}]",
+            wind.time.first().unwrap(),
+            wind.time.last().unwrap()
+        );
         let n_sample = wind
             .loads
             .iter()
