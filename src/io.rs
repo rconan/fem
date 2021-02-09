@@ -52,6 +52,15 @@ impl IO {
             IO::On(_) => self
         }
     }
+    pub fn get_by<F,T>(&self, pred: F) -> Option<T>
+    where
+        F: Fn(&IOData) -> Option<T>,
+    {
+        match self {
+            IO::On(data) => pred(data),
+            IO::Off(_) => None,
+        }
+    }
     pub fn is_on(&self) -> bool {
         match self {
             IO::On(_) => true,
