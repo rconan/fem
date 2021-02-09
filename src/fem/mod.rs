@@ -13,7 +13,7 @@ use std::path::Path;
 pub mod fem_io;
 
 /// Finite Element Model
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct FEM {
     /// Model info
     #[serde(rename = "modelDescription")]
@@ -223,16 +223,16 @@ impl fmt::Display for FEM {
         let ins = self
             .inputs
             .iter()
-            .filter_map(|x| x.as_ref())
             .enumerate()
+            .filter_map(|(k, x)| x.as_ref().and_then(|x| Some((k, x))))
             .map(|(k, x)| format!(" #{:02} {}", k, x))
             .collect::<Vec<String>>()
             .join("\n");
         let outs = self
             .outputs
             .iter()
-            .filter_map(|x| x.as_ref())
             .enumerate()
+            .filter_map(|(k, x)| x.as_ref().and_then(|x| Some((k, x))))
             .map(|(k, x)| format!(" #{:02} {}", k, x))
             .collect::<Vec<String>>()
             .join("\n");

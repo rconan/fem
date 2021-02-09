@@ -2,7 +2,7 @@ use nalgebra::Matrix2;
 use serde::Serialize;
 use num_complex::Complex;
 
-#[derive(Debug,Serialize)]
+#[derive(Debug,Serialize,Clone)]
 pub struct Exponential {
     pub tau: f64,
     pub q: (f64, f64, f64, f64),
