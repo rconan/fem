@@ -1,4 +1,4 @@
-use super::IO;
+use super::{IOData, IO};
 use serde;
 use serde::Deserialize;
 use std::fmt;
@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut};
 
 macro_rules! fem_io {
     ($io:ident: $($name:expr, $variant:ident),+) => {
-        #[derive(Deserialize, Debug)]
+        #[derive(Deserialize, Debug, Clone)]
         pub enum $io {
             $(#[serde(rename = $name)]
             $variant(Vec<IO>)),+
@@ -16,6 +16,16 @@ macro_rules! fem_io {
                 match self {
                     $($io::$variant(io) => {
                         io.iter().fold(0,|a,x| a + x.is_on() as usize)
+                    }),+
+                }
+            }
+            pub fn get_by<F,T>(&self, pred: F) -> Vec<T>
+                where
+                F: Fn(&IOData) -> Option<T> + Copy,
+            {
+                match self {
+                    $($io::$variant(io) => {
+                        io.iter().filter_map(|x| x.get_by(pred)).collect()
                     }),+
                 }
             }
@@ -38,7 +48,18 @@ macro_rules! fem_io {
         impl fmt::Display for $io {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
-                    $($io::$variant(_) => write!(f,"{:>24}: [{:5}]",$name,self.len())),+
+                    $($io::$variant(io) => {
+                        let mut cs: Vec<_> = io.iter().filter_map(|x| match x {
+                            IO::On(data) => data.properties.cs_label.as_ref(),
+                            IO::Off(_) => None
+                        }).collect();
+                        cs.sort();
+                        cs.dedup();
+                        if cs.len()>1 {
+                            write!(f,"{:>24}: [{:5}]",$name,self.len())
+                        } else {
+                            write!(f,"{:>24}: [{:5}] {:?}",$name,self.len(),cs)
+                        }}),+
                 }
             }
         }
