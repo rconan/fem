@@ -1,4 +1,4 @@
-use super::fem_io;
+use super::{fem_io, Pairing};
 use anyhow::{Context, Result};
 use serde;
 use serde::Deserialize;
@@ -26,9 +26,9 @@ macro_rules! loads {
                     $(Loads::$variant(io) => io),+
                 }
             }
-            pub fn as_output(self) -> Outputs {
+            pub fn as_output(self) -> Box<dyn Pairing<fem_io::Inputs,Vec<f64>>> {
                 match self {
-                    $(Loads::$variant(io) => Outputs::$variant(io.into_iter())),+
+                    $(Loads::$variant(io) => Box::new(Outputs::$variant(io.into_iter()))),+
                 }
             }
             pub fn match_io(&self, fem: &fem_io::Inputs, count: usize) -> Option<&[f64]> {
@@ -54,6 +54,16 @@ macro_rules! outputs {
                 }
             }
             pub fn match_io(&mut self, fem: &fem_io::Inputs) -> Option<Vec<f64>> {
+                match (fem,self) {
+                    $((fem_io::Inputs::$variant(_),Outputs::$variant(v)) => {
+                        v.next()
+                    }),+
+                        _ => None
+                }
+            }
+        }
+        impl Pairing<fem_io::Inputs,Vec<f64>> for Outputs {
+            fn pair(&mut self, fem: &fem_io::Inputs) -> Option<Vec<f64>> {
                 match (fem,self) {
                     $((fem_io::Inputs::$variant(_),Outputs::$variant(v)) => {
                         v.next()
@@ -109,9 +119,10 @@ pub struct WindLoads {
     pub n_sample: usize,
 }
 pub struct WindLoadsIter {
-    pub outputs: Vec<Outputs>, //Vec<Box<dyn Pairing<fem_io::Inputs,Vec<f64>>>>,
+    pub outputs: Vec<Box<dyn Pairing<fem_io::Inputs,Vec<f64>>>>,
     pub n_sample: usize,
 }
+/*
 impl WindLoadsIter {
     pub fn dispatch(&mut self, fem: &fem_io::Inputs) -> Option<Vec<f64>> {
         self.outputs
@@ -120,6 +131,7 @@ impl WindLoadsIter {
             .next()
     }
 }
+ */
 
 impl WindLoads {
     pub fn from_pickle<P>(path: P) -> Result<Self>

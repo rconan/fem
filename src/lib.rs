@@ -22,6 +22,10 @@ pub use bilinear::Bilinear;
 pub mod exponential;
 pub use exponential::Exponential;
 
+pub trait Pairing<T,S> {
+    fn pair(&mut self, other: &T) -> Option<S>;
+}
+
 pub fn load_io<P: AsRef<Path>>(path: P) -> Result<BTreeMap<String, Vec<IO>>, Box<dyn Error>> {
     let f = File::open(path)?;
     let r = BufReader::with_capacity(1_000_000, f);

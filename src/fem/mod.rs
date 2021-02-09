@@ -1,4 +1,4 @@
-use super::{Exponential, IOData, WindLoads, IO};
+use super::{Exponential, IOData, Pairing, WindLoads, IO};
 use anyhow::{Context, Result};
 use nalgebra as na;
 use rayon::prelude::*;
@@ -213,6 +213,22 @@ impl FEM {
                 .filter_map(|x| x.as_ref().and_then(|x| wind.dispatch(x)))
                 .flatten()
                 .cloned()
+                .collect(),
+        );
+        self
+    }
+    pub fn set_u_alt(
+        &mut self,
+        others: &mut Vec<Box<dyn Pairing<fem_io::Inputs, Vec<f64>>>>,
+    ) -> &mut Self {
+        self.u = Some(
+            self.inputs
+                .iter()
+                .filter_map(|i| match i.as_ref() {
+                    Some(i) => others.iter_mut().filter_map(|o| o.pair(i)).next(),
+                    None => None,
+                })
+                .flatten()
                 .collect(),
         );
         self
