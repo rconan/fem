@@ -31,6 +31,11 @@ macro_rules! loads {
                     $(Loads::$variant(io) => Box::new(Outputs::$variant(io.into_iter()))),+
                 }
             }
+            pub fn as_n_output(self, n: usize) -> Box<dyn Pairing<fem_io::Inputs,Vec<f64>>> {
+                match self {
+                    $(Loads::$variant(io) => Box::new(Outputs::$variant(io[..n].to_owned().into_iter()))),+
+                }
+            }
             pub fn match_io(&self, fem: &fem_io::Inputs, count: usize) -> Option<&[f64]> {
                 match (fem,self) {
                     $((fem_io::Inputs::$variant(_),Loads::$variant(v)) => {
@@ -113,14 +118,11 @@ pub struct WindLoads {
     #[serde(rename = "outputs")]
     pub loads: Vec<Option<Loads>>,
     pub time: Vec<f64>,
-    #[serde(default)]
-    count: usize,
     #[serde(skip)]
-    pub n_sample: usize,
+    pub n_sample: Option<usize>,
 }
 pub struct WindLoadsIter {
-    pub outputs: Vec<Box<dyn Pairing<fem_io::Inputs,Vec<f64>>>>,
-    pub n_sample: usize,
+    pub outputs: Vec<Box<dyn Pairing<fem_io::Inputs, Vec<f64>>>>,
 }
 /*
 impl WindLoadsIter {
@@ -134,7 +136,7 @@ impl WindLoadsIter {
  */
 
 impl WindLoads {
-    pub fn from_pickle<P>(path: P) -> Result<WindLoadsIter>
+    pub fn from_pickle<P>(path: P) -> Result<WindLoads>
     where
         P: AsRef<Path> + fmt::Display + Copy,
     {
@@ -142,42 +144,32 @@ impl WindLoads {
         let r = BufReader::with_capacity(1_000_000_000, f);
         let v: serde_pickle::Value =
             serde_pickle::from_reader(r).context(format!("Cannot read {}", path))?;
-        let wind: Self = pkl::from_value(v).context(format!("Failed to load {}", path))?;
-        println!(
-            "Time range: [{};{}]",
-            wind.time.first().unwrap(),
-            wind.time.last().unwrap()
-        );
-        let n_sample = wind
-            .loads
-            .iter()
-            .filter_map(|x| x.as_ref())
-            .next()
-            .map_or(0, |x| x.len());
-        let outputs: Vec<_> = wind
-            .loads
-            .iter()
-            .flat_map(|x| x.as_ref())
-            .cloned()
-            .map(|x| x.as_output())
-            .collect();
-        Ok(WindLoadsIter { outputs, n_sample })
+        pkl::from_value(v).context(format!("Failed to load {}", path))
     }
-    pub fn dispatch(&self, fem: &fem_io::Inputs) -> Option<&[f64]> {
-        self.loads
-            .iter()
-            .filter_map(|x| x.as_ref().and_then(|x| x.match_io(&fem, self.count - 1)))
-            .next()
+    pub fn n_sample(self, n_sample: usize) -> Self {
+        Self {
+            n_sample: Some(n_sample),
+            ..self
+        }
     }
-}
-impl Iterator for WindLoads {
-    type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.count == self.n_sample {
-            None
-        } else {
-            self.count += 1;
-            Some(self.count)
+    pub fn as_outputs(self) -> WindLoadsIter {
+        WindLoadsIter {
+            outputs: match &self.n_sample {
+                Some(n) => self
+                    .loads
+                    .iter()
+                    .flat_map(|x| x.as_ref())
+                    .cloned()
+                    .map(|x| x.as_n_output(*n))
+                    .collect(),
+                None => self
+                    .loads
+                    .iter()
+                    .flat_map(|x| x.as_ref())
+                    .cloned()
+                    .map(|x| x.as_output())
+                    .collect(),
+            },
         }
     }
 }
