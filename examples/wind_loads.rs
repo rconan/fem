@@ -50,10 +50,8 @@ fn main() {
         fem.state_space.as_ref().unwrap().len()
     );
 
-    wind.n_sample /= 10;
+    //wind.n_sample /= 10;
     println!("# of steps: {}", wind.n_sample);
-    let mut u = vec![0f64; 6];
-    u[0] = 1.;
     println!("Running model ...");
     let tic = Timer::tic();
 
