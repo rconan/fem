@@ -23,7 +23,11 @@ impl Timer {
 fn main() {
     let tic = Timer::tic();
     println!("Loading wind loads ...");
-    let mut wind = WindLoads::from_pickle("examples/trimmer_finest_mesh_20Hz.neu.pkl").unwrap();
+    let n_sample = 19990;
+    let mut wind = WindLoads::from_pickle("examples/trimmer_finest_mesh_20Hz.neu.pkl")
+        .unwrap()
+        //.n_sample(n_sample)
+        .as_outputs();
     tic.print_toc();
 
     let tic = Timer::tic();
@@ -45,18 +49,12 @@ fn main() {
         fem.state_space.as_ref().unwrap().len()
     );
 
-    wind.n_sample /= 10;
-    println!("# of steps: {}", wind.n_sample);
-    let mut u = vec![0f64; 6];
-    u[0] = 1.;
     println!("Running model ...");
     let tic = Timer::tic();
-
-    let mut y: Vec<Vec<f64>> = Vec::with_capacity(wind.n_sample * fem.n_outputs());
-    for _ in 0..wind.n_sample {
-        fem.set_u(&mut wind.outputs).next();
+    let mut y: Vec<Vec<f64>> = Vec::with_capacity(n_sample * fem.n_outputs());
+    while let Some(ys) = fem.set_u(&mut wind.outputs).next() {
+        y.push(ys);
     }
-
     tic.print_toc();
 
     let mut f = File::create("examples/wind_loads_y.pkl").unwrap();
