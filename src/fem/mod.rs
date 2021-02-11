@@ -1,4 +1,4 @@
-use super::{Exponential, IOData, Pairing, IO};
+use super::{Exponential, IOData, Pairing, IO, wind_loads};
 use anyhow::{Context, Result};
 use nalgebra as na;
 use rayon::prelude::*;
@@ -208,7 +208,7 @@ impl FEM {
     }
     pub fn set_u(
         &mut self,
-        others: &mut Vec<Box<dyn Pairing<fem_io::Inputs, Vec<f64>>>>,
+        others: &mut Vec<wind_loads::Outputs>,
     ) -> &mut Self {
         let u: Vec<_> = self
             .inputs

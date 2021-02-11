@@ -26,14 +26,14 @@ macro_rules! loads {
                     $(Loads::$variant(io) => io),+
                 }
             }
-            pub fn as_output(self) -> Box<dyn Pairing<fem_io::Inputs,Vec<f64>>> {
+            pub fn as_output(self) -> Outputs {
                 match self {
-                    $(Loads::$variant(io) => Box::new(Outputs::$variant(io.into_iter()))),+
+                    $(Loads::$variant(io) => Outputs::$variant(io.into_iter())),+
                 }
             }
-            pub fn as_n_output(self, n: usize) -> Box<dyn Pairing<fem_io::Inputs,Vec<f64>>> {
+            pub fn as_n_output(self, n: usize) -> Outputs {
                 match self {
-                    $(Loads::$variant(io) => Box::new(Outputs::$variant(io[..n].to_owned().into_iter()))),+
+                    $(Loads::$variant(io) => Outputs::$variant(io[..n].to_owned().into_iter())),+
                 }
             }
             pub fn match_io(&self, fem: &fem_io::Inputs, count: usize) -> Option<&[f64]> {
@@ -122,7 +122,7 @@ pub struct WindLoads {
     pub n_sample: Option<usize>,
 }
 pub struct WindLoadsIter {
-    pub outputs: Vec<Box<dyn Pairing<fem_io::Inputs, Vec<f64>>>>,
+    pub outputs: Vec<Outputs>,
     pub n_sample: usize,
 }
 
