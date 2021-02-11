@@ -123,17 +123,8 @@ pub struct WindLoads {
 }
 pub struct WindLoadsIter {
     pub outputs: Vec<Box<dyn Pairing<fem_io::Inputs, Vec<f64>>>>,
+    pub n_sample: usize,
 }
-/*
-impl WindLoadsIter {
-    pub fn dispatch(&mut self, fem: &fem_io::Inputs) -> Option<Vec<f64>> {
-        self.outputs
-            .iter_mut()
-            .filter_map(|x| x.match_io(&fem))
-            .next()
-    }
-}
- */
 
 impl WindLoads {
     pub fn from_pickle<P>(path: P) -> Result<WindLoads>
@@ -153,22 +144,31 @@ impl WindLoads {
         }
     }
     pub fn as_outputs(self) -> WindLoadsIter {
-        WindLoadsIter {
-            outputs: match &self.n_sample {
-                Some(n) => self
+        match &self.n_sample {
+            Some(n) => WindLoadsIter {
+                outputs: self
                     .loads
                     .iter()
-                    .flat_map(|x| x.as_ref())
+                    .filter_map(|x| x.as_ref())
                     .cloned()
                     .map(|x| x.as_n_output(*n))
                     .collect(),
-                None => self
+                n_sample: *n,
+            },
+            None => WindLoadsIter {
+                outputs: self
                     .loads
                     .iter()
-                    .flat_map(|x| x.as_ref())
+                    .filter_map(|x| x.as_ref())
                     .cloned()
                     .map(|x| x.as_output())
                     .collect(),
+                n_sample: self
+                    .loads
+                    .iter()
+                    .filter_map(|x| x.as_ref())
+                    .next()
+                    .map_or(0, |x| x.len()),
             },
         }
     }
