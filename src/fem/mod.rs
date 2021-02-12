@@ -212,8 +212,8 @@ impl FEM {
     ) -> &mut Self {
         let u: Vec<_> = self
             .inputs
-            .iter()
-            .filter_map(|i| match i.as_ref() {
+            .iter_mut()
+            .filter_map(|i| match i.as_mut() {
                 Some(i) => others.iter_mut().filter_map(|o| o.pair(i)).next(),
                 None => None,
             })

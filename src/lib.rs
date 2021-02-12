@@ -1,3 +1,4 @@
+use dos::Pairing;
 use serde_pickle as pkl;
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -12,19 +13,15 @@ pub mod wind_loads;
 pub use wind_loads::WindLoads;
 
 pub mod fem;
-pub use fem::{FEM,fem_io};
+pub use fem::{fem_io, FEM};
 
 pub mod state_space;
-pub use state_space::{StateSpace2x2, DiscreteApproximation, SerdeStateSpace2x2};
+pub use state_space::{DiscreteApproximation, SerdeStateSpace2x2, StateSpace2x2};
 
 pub mod bilinear;
 pub use bilinear::Bilinear;
 pub mod exponential;
 pub use exponential::Exponential;
-
-pub trait Pairing<T,S> {
-    fn pair(&mut self, other: &T) -> Option<S>;
-}
 
 pub fn load_io<P: AsRef<Path>>(path: P) -> Result<BTreeMap<String, Vec<IO>>, Box<dyn Error>> {
     let f = File::open(path)?;
@@ -47,7 +44,6 @@ impl ToPickle for SerdeStateSpace2x2 {
         pkl::to_writer(&mut f, &self, true)?;
         Ok(())
     }
-
 }
 impl ToPickle for Bilinear {
     fn to_pickle<P: AsRef<Path>>(&self, path: P) -> Result<(), Box<dyn Error>> {

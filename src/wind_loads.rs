@@ -68,7 +68,7 @@ macro_rules! outputs {
             }
         }
         impl Pairing<fem_io::Inputs,Vec<f64>> for Outputs {
-            fn pair(&mut self, fem: &fem_io::Inputs) -> Option<Vec<f64>> {
+            fn pair(&mut self, fem: &mut fem_io::Inputs) -> Option<Vec<f64>> {
                 match (fem,self) {
                     $((fem_io::Inputs::$variant(_),Outputs::$variant(v)) => {
                         v.next()
