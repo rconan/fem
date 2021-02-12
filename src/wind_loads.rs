@@ -1,4 +1,4 @@
-use super::{fem_io, Pairing};
+use super::fem_io;
 use anyhow::{Context, Result};
 use serde;
 use serde::Deserialize;
@@ -59,16 +59,6 @@ macro_rules! outputs {
                 }
             }
             pub fn match_io(&mut self, fem: &fem_io::Inputs) -> Option<Vec<f64>> {
-                match (fem,self) {
-                    $((fem_io::Inputs::$variant(_),Outputs::$variant(v)) => {
-                        v.next()
-                    }),+
-                        _ => None
-                }
-            }
-        }
-        impl Pairing<fem_io::Inputs,Vec<f64>> for Outputs {
-            fn pair(&mut self, fem: &mut fem_io::Inputs) -> Option<Vec<f64>> {
                 match (fem,self) {
                     $((fem_io::Inputs::$variant(_),Outputs::$variant(v)) => {
                         v.next()

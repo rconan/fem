@@ -1,4 +1,3 @@
-use dos::Pairing;
 use serde_pickle as pkl;
 use std::collections::BTreeMap;
 use std::error::Error;
