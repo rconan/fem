@@ -20,13 +20,14 @@ serde-pickle = "0.6.2"
 gmt-m1 = {path = "../gmt-m1" }
 plotters = "0.3.0"
 datax = { path = "../datax" }
-complot = { path = "../complot" }
-geotrans = { path = "../geotrans" }
+complot = { git = "https://github.com/rconan/complot.git", branch = "main" }
+geotrans = { git = "https://github.com/rconan/geotrans.git", branch = "main" }
 spade = "1.8.2"
 nalgebra = "0.24.0"
 rstar = "0.8.2"
 rayon = "1.5.0"
 rustfft = "5.0.1"
+csv = "1.1.5"
 
 #[profile.release]
 #debug = true

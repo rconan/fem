@@ -1,4 +1,4 @@
-use super::{Exponential, IOData, IO, wind_loads};
+use crate::{Exponential, IOData, IO};
 use anyhow::{Context, Result};
 use nalgebra as na;
 use rayon::prelude::*;
@@ -27,10 +27,10 @@ pub struct FEM {
     pub eigen_frequencies: Vec<f64>,
     /// inputs forces to modal forces matrix [n_modes,n_inputs] (row wise)
     #[serde(rename = "inputs2ModalF")]
-    inputs_to_modal_forces: Vec<f64>,
+    pub inputs_to_modal_forces: Vec<f64>,
     /// mode shapes to outputs nodes [n_outputs,n_modes] (row wise)
     #[serde(rename = "modalDisp2Outputs")]
-    modal_disp_to_outputs: Vec<f64>,
+    pub modal_disp_to_outputs: Vec<f64>,
     /// mode shapes damping coefficients
     #[serde(rename = "proportionalDampingVec")]
     pub proportional_damping_vec: Vec<f64>,
@@ -174,21 +174,6 @@ impl FEM {
         //println!("forces 2 modes: {:?}", forces_2_modes.shape());
         let w = self.eigen_frequencies_to_radians();
         let zeta = &self.proportional_damping_vec;
-        /*
-        (0..self.n_modes())
-            .map(|k| {
-                let b = forces_2_modes.row(k);
-                let c = modes_2_nodes.column(k);
-                StateSpace2x2::from_second_order(
-                    DiscreteApproximation::BiLinear(tau),
-                    w[k],
-                    zeta[k],
-                    Some(b.clone_owned().as_slice()),
-                    Some(c.as_slice()),
-                )
-            })
-            .collect()
-        */
         self.state_space = Some(
             (0..self.n_modes())
                 .map(|k| {
