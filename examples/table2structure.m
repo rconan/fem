@@ -1,6 +1,7 @@
+function table2structure(datapath)
 %%
 %clear
-load("modal_state_space_model_2ndOrder")
+load(fullfile(datapath,"modal_state_space_model_2ndOrder"))
 %%
 s  = table2struct(inputTable);
 ws = struct();
@@ -40,7 +41,7 @@ end
 fem_outputs = ws;
 %%
 modelDescription = uint32(modelDescription{1});
-save('modal_state_space_model_2ndOrder.rs.mat',...
+save(fullfile(datapath,'modal_state_space_model_2ndOrder.rs.mat'),...
     'modelDescription',...
     'fem_inputs',...
     'fem_outputs',...

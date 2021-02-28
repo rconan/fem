@@ -1,8 +1,8 @@
 use nalgebra::Matrix2;
-use serde::Serialize;
 use num_complex::Complex;
+use serde::Serialize;
 
-#[derive(Debug,Serialize,Clone)]
+#[derive(Debug, Serialize, Clone, Default)]
 pub struct Exponential {
     pub tau: f64,
     pub q: (f64, f64, f64, f64),
@@ -43,7 +43,7 @@ impl Exponential {
             (x * x * (ezpxy - ezmxy) / (2. * z)).re,
             ((zmxy * ezmxy + zpxy * ezpxy) / (2. * z)).re,
         );
-        let bd = ia * (ad - i)/tau.sqrt();
+        let bd = ia * (ad - i) / tau.sqrt();
         let n = continuous_cc.len();
         Self {
             tau,
