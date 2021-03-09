@@ -40,7 +40,11 @@ for j=1:length(s)
 end
 fem_outputs = ws;
 %%
-modelDescription = uint32(modelDescription{1});
+if iscell(modelDescription) 
+    modelDescription = uint32(modelDescription{1});
+else
+    modelDescription = uint32(modelDescription);
+end
 save(fullfile(datapath,'modal_state_space_model_2ndOrder.rs.mat'),...
     'modelDescription',...
     'fem_inputs',...
