@@ -153,7 +153,13 @@ fem_io!(Inputs:
         "OSS_TopEnd_6F",
         OSSTopEnd6F,
         "OSS_Truss_6F",
-        OSSTruss6F
+        OSSTruss6F,
+        "OSS_AzDrive_Torque",
+        OSSAzDriveTorque,
+        "OSS_ElDrive_Torque",
+        OSSElDriveTorque,
+        "OSS_RotDrive_Torque",
+        OSSRotDriveTorque
 );
 fem_io!(Outputs:
         "OSS_TrussIF_6D",
@@ -261,6 +267,12 @@ fem_io!(Outputs:
         "M2_reference_body_6_axial_d",
         M2ReferenceBody6AxialD,
         "M2_reference_body_7_axial_d",
-        M2ReferenceBody7AxialD
+        M2ReferenceBody7AxialD,
+        "OSS_AzEncoder_Angle",
+        OSSAzEncoderAngle,
+        "OSS_ElEncoder_Angle",
+        OSSElEncoderAngle,
+        "OSS_RotEncoder_Angle",
+        OSSRotEncoderAngle
 );
 
