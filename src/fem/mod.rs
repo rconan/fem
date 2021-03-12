@@ -194,6 +194,16 @@ impl FEM {
 }
 impl fmt::Display for FEM {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let min_damping = self
+            .proportional_damping_vec
+            .iter()
+            .cloned()
+            .fold(std::f64::INFINITY, f64::min);
+        let max_damping = self
+            .proportional_damping_vec
+            .iter()
+            .cloned()
+            .fold(std::f64::NEG_INFINITY, f64::max);
         let ins = self
             .inputs
             .iter()
@@ -212,7 +222,7 @@ impl fmt::Display for FEM {
             .join("\n");
         write!(
             f,
-            " INPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
+            "  - damping coefficients [min;max]: [{:.4};{:.4}] \nINPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]", min_damping, max_damping,
             ins,
             "Total",
             self.n_inputs(),
