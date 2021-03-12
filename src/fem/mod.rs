@@ -41,15 +41,12 @@ pub struct FEM {
 }
 impl FEM {
     /// Loads a FEM model saved in a second order from in a pickle file
-    pub fn from_pickle<P>(path: P) -> Result<FEM>
-    where
-        P: AsRef<Path> + fmt::Display + Copy,
-    {
-        let f = File::open(path).context(format!("File {} not found", path))?;
+    pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM> {
+        let f = File::open(path).context("FEM data file found")?;
         let r = BufReader::with_capacity(1_000_000, f);
         let v: serde_pickle::Value =
-            serde_pickle::from_reader(r).context(format!("Cannot read {}", path))?;
-        Ok(pkl::from_value(v).context(format!("Failed to load {}", path))?)
+            serde_pickle::from_reader(r).context("Cannot read FEM data file")?;
+        Ok(pkl::from_value(v).context("Failed to load FEM data")?)
     }
     /// Gets the number of modes
     pub fn n_modes(&self) -> usize {
