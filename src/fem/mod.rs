@@ -219,7 +219,8 @@ impl fmt::Display for FEM {
             .join("\n");
         write!(
             f,
-            "  - first 5 eigen frequencies: {:9.3?}\n  - last 5 eigen frequencies: {:9.3?}\n  - damping coefficients [min;max]: [{:.4};{:.4}] \nINPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
+            "  - # of modes: {}\n  - first 5 eigen frequencies: {:9.3?}\n  - last 5 eigen frequencies: {:9.3?}\n  - damping coefficients [min;max]: [{:.4};{:.4}] \nINPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
+            self.n_modes(),
             &self.eigen_frequencies[..5],
             &self.eigen_frequencies[self.n_modes()-5..],
             min_damping, max_damping,
