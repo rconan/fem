@@ -10,6 +10,38 @@ use std::path::Path;
 
 pub mod fem_io;
 
+#[derive(Debug)]
+pub enum FEMError {
+    FileNotFound(std::io::Error),
+    PickleRead(serde_pickle::Error),
+}
+impl fmt::Display for FEMError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::FileNotFound(e) => write!(f, "wind loads data file not found: {}", e),
+            Self::PickleRead(e) => write!(f, "cannot read wind loads data file: {}", e),
+        }
+    }
+}
+impl From<std::io::Error> for FEMError {
+    fn from(e: std::io::Error) -> Self {
+        Self::FileNotFound(e)
+    }
+}
+impl From<serde_pickle::Error> for FEMError {
+    fn from(e: serde_pickle::Error) -> Self {
+        Self::PickleRead(e)
+    }
+}
+impl std::error::Error for FEMError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::FileNotFound(source) => Some(source),
+            Self::PickleRead(source) => Some(source),
+        }
+    }
+}
+
 /// Finite Element Model
 #[derive(Deserialize, Debug, Clone)]
 pub struct FEM {
@@ -35,12 +67,12 @@ pub struct FEM {
 }
 impl FEM {
     /// Loads a FEM model saved in a second order from in a pickle file
-    pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM, String> {
-        let f = File::open(path).map_err(|_| "FEM data file found")?;
+    pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM, FEMError> {
+        let f = File::open(path)?;
         let r = BufReader::with_capacity(1_000_000, f);
         let v: serde_pickle::Value =
-            serde_pickle::from_reader(r).map_err(|_| "Cannot read FEM data file")?;
-        Ok(pkl::from_value(v).map_err(|_| "Failed to load FEM data")?)
+            serde_pickle::from_reader(r)?;
+        Ok(pkl::from_value(v)?)
     }
     /// Gets the number of modes
     pub fn n_modes(&self) -> usize {
