@@ -7,6 +7,9 @@ pub struct Properties {
     pub node_id: Option<Vec<u32>>,
     #[serde(rename = "csLabel")]
     pub cs_label: Option<String>,
+    #[serde(rename = "csNumber")]
+    pub cs_number: Option<Vec<u32>>,
+    pub coefficients: Option<Vec<f64>>,
     pub location: Option<Vec<f64>>,
     pub component: Option<Vec<i32>>,
     pub components: Option<Vec<f64>>,
