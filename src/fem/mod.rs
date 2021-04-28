@@ -85,18 +85,21 @@ impl FEM {
             .map(|x| 2.0 * std::f64::consts::PI * x)
             .collect()
     }
+    /// Gets the number of inputs
     pub fn n_inputs(&self) -> usize {
         self.inputs
             .iter()
             .filter_map(|x| x.as_ref())
             .fold(0usize, |a, x| a + x.len())
     }
+    /// Gets the number of outputs
     pub fn n_outputs(&self) -> usize {
         self.outputs
             .iter()
             .filter_map(|x| x.as_ref())
             .fold(0usize, |a, x| a + x.len())
     }
+    /// Selects the inputs according to their natural ordering
     pub fn keep_inputs(&mut self, id: &[usize]) -> &mut Self {
         self.inputs.iter_mut().enumerate().for_each(|(k, i)| {
             if !id.contains(&k) {
@@ -105,6 +108,7 @@ impl FEM {
         });
         self
     }
+    /// Selects the inputs according to their natural ordering and some properties matching
     pub fn keep_inputs_by<F>(&mut self, id: &[usize], pred: F) -> &mut Self
     where
         F: Fn(&IOData) -> bool + Copy,
@@ -123,10 +127,30 @@ impl FEM {
         });
         self
     }
+    /// Selects the outputs according to their natural ordering
     pub fn keep_outputs(&mut self, id: &[usize]) -> &mut Self {
         self.outputs.iter_mut().enumerate().for_each(|(k, i)| {
             if !id.contains(&k) {
                 *i = None
+            }
+        });
+        self
+    }
+    /// Selects the outputs according to their natural ordering and some properties matching
+    pub fn keep_outputs_by<F>(&mut self, id: &[usize], pred: F) -> &mut Self
+    where
+        F: Fn(&IOData) -> bool + Copy,
+    {
+        self.outputs.iter_mut().enumerate().for_each(|(k, i)| {
+            if !id.contains(&k) {
+                *i = None
+            } else {
+                i.as_mut().map(|i| {
+                    i.iter_mut().for_each(|io| {
+                        *io = io.clone().switch_off();
+                        *io = io.clone().switch_on_by(pred);
+                    })
+                });
             }
         });
         self
