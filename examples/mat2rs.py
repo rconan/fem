@@ -1,8 +1,12 @@
-from scipy.io import loadmat
 import pickle
 import numpy as np
 
-data = loadmat("modal_state_space_model_2ndOrder.rs.mat")
+try:
+    from scipy.io import loadmat
+    data = loadmat("modal_state_space_model_2ndOrder.rs.mat")
+except NotImplementedError:
+    import mat73
+    data = mat73.loadmat('modal_state_space_model_2ndOrder.rs.mat')
 
 fem_inputs = data["fem_inputs"]
 ins_dict = {}
