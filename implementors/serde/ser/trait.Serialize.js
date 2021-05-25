@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["fem"] = [{"text":"impl Serialize for DiscreteApproximation","synthetic":false,"types":[]},{"text":"impl Serialize for SerdeStateSpace2x2","synthetic":false,"types":[]},{"text":"impl Serialize for Bilinear","synthetic":false,"types":[]},{"text":"impl Serialize for Exponential","synthetic":false,"types":[]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
