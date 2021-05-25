@@ -289,4 +289,3 @@ fem_io!(Outputs:
         "OSS_RotEncoder_Angle",
         OSSRotEncoderAngle
 );
-

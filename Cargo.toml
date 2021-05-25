@@ -7,9 +7,17 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+#dosio = { git = "https://github.com/rconan/dosio.git", branch = "main" }
+dosio = { path = "../dosio" , optional = true }
+log = { version = "0.4.14", optional = true }
 nalgebra = "0.26.2"
+num-complex = { version = "0.4.0", optional = true }
+rayon = { version = "1.5.1", optional = true }
 serde = { version = "1.0.119", features = ["derive"] }
 serde-pickle = "0.6.2"
+
+[features]
+dos = ["dosio", "rayon", "log", "num-complex"]
 
 [dev-dependencies]
 plotters = "0.3.0"

@@ -1,4 +1,4 @@
-use crate::{ IOData, IO};
+use crate::io::{IOData, IO};
 use nalgebra as na;
 use serde;
 use serde::Deserialize;
@@ -70,8 +70,7 @@ impl FEM {
     pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM, FEMError> {
         let f = File::open(path)?;
         let r = BufReader::with_capacity(1_000_000, f);
-        let v: serde_pickle::Value =
-            serde_pickle::from_reader(r)?;
+        let v: serde_pickle::Value = serde_pickle::from_reader(r)?;
         Ok(pkl::from_value(v)?)
     }
     /// Gets the number of modes

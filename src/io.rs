@@ -36,13 +36,13 @@ impl IO {
     pub fn switch_off(self) -> Self {
         match self {
             IO::On(data) => IO::Off(data),
-            IO::Off(_) => self
+            IO::Off(_) => self,
         }
     }
     pub fn switch_on(self) -> Self {
         match self {
             IO::Off(data) => IO::On(data),
-            IO::On(_) => self
+            IO::On(_) => self,
         }
     }
     pub fn switch_on_by<F>(self, pred: F) -> Self
@@ -52,10 +52,10 @@ impl IO {
         match self {
             IO::Off(data) if pred(&data) => IO::On(data),
             IO::Off(_) => self,
-            IO::On(_) => self
+            IO::On(_) => self,
         }
     }
-    pub fn get_by<F,T>(&self, pred: F) -> Option<T>
+    pub fn get_by<F, T>(&self, pred: F) -> Option<T>
     where
         F: Fn(&IOData) -> Option<T>,
     {
@@ -67,7 +67,7 @@ impl IO {
     pub fn is_on(&self) -> bool {
         match self {
             IO::On(_) => true,
-            IO::Off(_) => false
+            IO::Off(_) => false,
         }
     }
 }

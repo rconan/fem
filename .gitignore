@@ -4,3 +4,4 @@ Cargo.lock
 *.mat
 *.png
 *.svg
+*~
