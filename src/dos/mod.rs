@@ -258,7 +258,7 @@ impl DiscreteStateSpace {
         self.outputs(element.inputs_tags())
     }
     fn select_fem_io(fem: &mut fem::FEM, dos_inputs: &[Tags], dos_outputs: &[Tags]) {
-        println!("{}", fem);
+        log::info!("## WHOLE FEM ##\n{}", fem);
         let inputs_idx: Vec<_> = fem
             .inputs
             .iter()
@@ -280,7 +280,7 @@ impl DiscreteStateSpace {
             })
             .collect();
         fem.keep_inputs(&inputs_idx).keep_outputs(&outputs_idx);
-        println!("{}", fem);
+        log::info!("## REDUCED FEM ##\n{}", fem);
     }
     fn io2modes(fem: &fem::FEM, dos_inputs: &[Tags]) -> Result<Vec<f64>> {
         use crate::io::IO;
@@ -372,7 +372,7 @@ impl DiscreteStateSpace {
             fem.n_inputs(),
             &Self::io2modes(&fem, &dos_inputs)?,
         );
-        println!("forces 2 modes: {:?}", forces_2_modes.shape());
+        log::info!("forces 2 modes: {:?}", forces_2_modes.shape());
         let fem_modes2io = Self::modes2io(&fem, &dos_outputs)?;
         let sizes: Vec<_> = fem_modes2io
             .iter()
@@ -383,7 +383,7 @@ impl DiscreteStateSpace {
             fem.n_modes(),
             &fem_modes2io.into_iter().flatten().collect::<Vec<f64>>(),
         );
-        println!("modes 2 nodes: {:?}", modes_2_nodes.shape());
+        log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());
         let mut w = fem.eigen_frequencies_to_radians();
         if let Some(eigen_frequencies) = self.eigen_frequencies {
             log::info!("Eigen values modified");
