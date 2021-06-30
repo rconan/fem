@@ -55,6 +55,9 @@ pub use bilinear::Bilinear;
 pub mod exponential;
 #[doc(inline)]
 pub use exponential::Exponential;
+pub mod second_order;
+#[doc(inline)]
+pub use second_order::SecondOrder;
 
 #[derive(Debug)]
 pub enum StateSpaceError {
@@ -469,6 +472,37 @@ pub struct DiscreteModalSolver<T> {
     /// vector of state models
     pub state_space: Vec<T>,
 }
+impl From<(SecondOrder, f64)> for DiscreteModalSolver<Exponential> {
+    fn from((second_order, tau): (SecondOrder, f64)) -> Self {
+        let n_in = second_order.u.size.iter().sum::<usize>();
+        let n_out = second_order.y.size.iter().sum::<usize>();
+        let n_mode = second_order.zeta.len();
+        let b = na::DMatrix::from_row_slice(n_mode, n_in, &second_order.b);
+        let c = na::DMatrix::from_row_slice(n_out, n_mode, &second_order.c);
+        let state_space: Vec<_> = (0..n_mode)
+            .map(|k| {
+                let b_row = b.row(k).clone_owned();
+                let c_col = c.column(k);
+                let w = second_order.omega[k] * 2. * std::f64::consts::PI;
+                Exponential::from_second_order(
+                    tau,
+                    w,
+                    second_order.zeta[k],
+                    b_row.as_slice().to_vec(),
+                    c_col.as_slice().to_vec(),
+                )
+            })
+            .collect();
+        DiscreteModalSolver {
+            u: vec![0f64; n_in],
+            u_tags: second_order.u.name,
+            y: vec![0f64; n_out],
+            y_tags: second_order.y.name,
+            y_sizes: second_order.y.size,
+            state_space,
+        }
+    }
+}
 impl Iterator for DiscreteModalSolver<Exponential> {
     type Item = ();
     fn next(&mut self) -> Option<Self::Item> {
@@ -554,5 +588,16 @@ impl IOTags for DiscreteModalSolver<Exponential> {
     }
     fn inputs_tags(&self) -> Vec<Tags> {
         self.u_tags.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_second_order() {
+        let snd_ord = SecondOrder::from_pickle("/media/rconan/FEM/20210614_2105_ASM_topendOnly/modal_state_space_model_2ndOrder_1500Hz_noRes_postproc.pkl").unwrap();
+        let _dms: DiscreteModalSolver<Exponential> = (snd_ord, 1e-3).into();
     }
 }
