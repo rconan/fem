@@ -142,7 +142,23 @@ io_match_fem!(
             OSSElDriveTorque,
             OSSRotDriveTorque,
             OSSM1FansLcl6F,
-            OSSPayloads6F
+            OSSPayloads6F,
+            MCM2PMA1F,
+            MCM2SmHexF,
+            MCM2S1VCDeltaF,
+            MCM2S1FluidDampingF,
+            MCM2S2VCDeltaF,
+            MCM2S2FluidDampingF,
+            MCM2S3VCDeltaF,
+            MCM2S3FluidDampingF,
+            MCM2S4VCDeltaF,
+            MCM2S4FluidDampingF,
+            MCM2S5VCDeltaF,
+            MCM2S5FluidDampingF,
+            MCM2S6VCDeltaF,
+            MCM2S6FluidDampingF,
+            MCM2S7VCDeltaF,
+            MCM2S7FluidDampingF
         ),
     outputs:
         (
@@ -159,7 +175,23 @@ io_match_fem!(
             MCASMCOG6D,
             MCM2TE6D,
             OSSM1FansLcl6D,
-            OSSPayloads6D
+            OSSPayloads6D,
+            MCM2PMA1D,
+            MCM2SmHexD,
+            M2Segment1AxialD,
+            M2Segment2AxialD,
+            M2Segment3AxialD,
+            M2Segment4AxialD,
+            M2Segment5AxialD,
+            M2Segment6AxialD,
+            M2Segment7AxialD,
+            MCM2S1VCDeltaD,
+            MCM2S2VCDeltaD,
+            MCM2S3VCDeltaD,
+            MCM2S4VCDeltaD,
+            MCM2S5VCDeltaD,
+            MCM2S6VCDeltaD,
+            MCM2S7VCDeltaD
         )
 );
 
@@ -473,13 +505,50 @@ pub struct DiscreteModalSolver<T> {
     pub state_space: Vec<T>,
 }
 impl From<(SecondOrder, f64)> for DiscreteModalSolver<Exponential> {
-    fn from((second_order, tau): (SecondOrder, f64)) -> Self {
-        let n_in = second_order.u.size.iter().sum::<usize>();
-        let n_out = second_order.y.size.iter().sum::<usize>();
-        let n_mode = second_order.zeta.len();
+    fn from((second_order, sampling_rate): (SecondOrder, f64)) -> Self {
+        let n_in = second_order.n_u();
+        let n_out = second_order.n_y();
+        let n_mode = second_order.n_mode();
         let b = na::DMatrix::from_row_slice(n_mode, n_in, &second_order.b);
         let c = na::DMatrix::from_row_slice(n_out, n_mode, &second_order.c);
+        let tau = sampling_rate.recip();
         let state_space: Vec<_> = (0..n_mode)
+            .map(|k| {
+                let b_row = b.row(k).clone_owned();
+                let c_col = c.column(k);
+                let w = second_order.omega[k] * 2. * std::f64::consts::PI;
+                Exponential::from_second_order(
+                    tau,
+                    w,
+                    second_order.zeta[k],
+                    b_row.as_slice().to_vec(),
+                    c_col.as_slice().to_vec(),
+                )
+            })
+            .collect();
+        DiscreteModalSolver {
+            u: vec![0f64; n_in],
+            u_tags: second_order.u.name,
+            y: vec![0f64; n_out],
+            y_tags: second_order.y.name,
+            y_sizes: second_order.y.size,
+            state_space,
+        }
+    }
+}
+impl From<(SecondOrder, f64, (usize, usize))> for DiscreteModalSolver<Exponential> {
+    fn from(
+        (second_order, sampling_rate, (skip, take)): (SecondOrder, f64, (usize, usize)),
+    ) -> Self {
+        let n_in = second_order.n_u();
+        let n_out = second_order.n_y();
+        let n_mode = second_order.n_mode();
+        let b = na::DMatrix::from_row_slice(n_mode, n_in, &second_order.b);
+        let c = na::DMatrix::from_row_slice(n_out, n_mode, &second_order.c);
+        let tau = sampling_rate.recip();
+        let state_space: Vec<_> = (0..n_mode)
+            .skip(skip)
+            .take(take)
             .map(|k| {
                 let b_row = b.row(k).clone_owned();
                 let c_col = c.column(k);

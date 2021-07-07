@@ -66,6 +66,7 @@
 use nalgebra::Matrix2;
 use num_complex::Complex;
 use serde::Serialize;
+use std::fmt;
 
 /// This structure is used to convert a continuous 2nd order ODE into a discrete state space model
 #[derive(Debug, Serialize, Clone, Default)]
@@ -126,6 +127,12 @@ impl Exponential {
             x: (0f64, 0f64),
         }
     }
+    pub fn n_inputs(&self) -> usize {
+        self.b.len()
+    }
+    pub fn n_outputs(&self) -> usize {
+        self.c.len()
+    }
     /// Returns the state space model output
     pub fn solve(&mut self, u: &[f64]) -> &[f64] {
         let (x0, x1) = self.x;
@@ -137,5 +144,18 @@ impl Exponential {
         self.x.0 = self.q.0 * x0 + self.q.1 * x1 + self.m.1 * v;
         self.x.1 = self.q.2 * x0 + self.q.3 * x1 + self.m.3 * v;
         self.y.as_slice()
+    }
+}
+impl fmt::Display for Exponential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "2x2 discrete state space model: {}->{} ({:.3}Hz)\n - A: {:.6?}\n - B: {:.6?}",
+            self.b.len(),
+            self.c.len(),
+            self.tau.recip(),
+            self.q,
+            self.m
+        )
     }
 }
