@@ -178,20 +178,21 @@ io_match_fem!(
             OSSPayloads6D,
             MCM2PMA1D,
             MCM2SmHexD,
-            M2Segment1AxialD,
-            M2Segment2AxialD,
-            M2Segment3AxialD,
-            M2Segment4AxialD,
-            M2Segment5AxialD,
-            M2Segment6AxialD,
-            M2Segment7AxialD,
+            M2segment1axiald,
+            M2segment2axiald,
+            M2segment3axiald,
+            M2segment4axiald,
+            M2segment5axiald,
+            M2segment6axiald,
+            M2segment7axiald,
             MCM2S1VCDeltaD,
             MCM2S2VCDeltaD,
             MCM2S3VCDeltaD,
             MCM2S4VCDeltaD,
             MCM2S5VCDeltaD,
             MCM2S6VCDeltaD,
-            MCM2S7VCDeltaD
+            MCM2S7VCDeltaD,
+            M2edgesensors
         )
 );
 
