@@ -64,6 +64,8 @@ pub struct FEM {
     /// mode shapes damping coefficients
     #[serde(rename = "proportionalDampingVec")]
     pub proportional_damping_vec: Vec<f64>,
+    #[serde(rename = "gainMatrix")]
+    pub static_gain: Option<Vec<f64>>,
 }
 impl FEM {
     /// Loads a FEM model saved in a second order from in a pickle file
@@ -212,16 +214,6 @@ impl FEM {
 }
 impl fmt::Display for FEM {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let min_damping = self
-            .proportional_damping_vec
-            .iter()
-            .cloned()
-            .fold(std::f64::INFINITY, f64::min);
-        let max_damping = self
-            .proportional_damping_vec
-            .iter()
-            .cloned()
-            .fold(std::f64::NEG_INFINITY, f64::max);
         let ins = self
             .inputs
             .iter()
@@ -238,7 +230,29 @@ impl fmt::Display for FEM {
             .map(|(k, x)| format!(" #{:02} {}", k, x))
             .collect::<Vec<String>>()
             .join("\n");
-        write!(
+        if let Some(_) = &self.static_gain {
+            write!(
+                f,
+                "INPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
+                ins,
+                "Total",
+                self.n_inputs(),
+                outs,
+                "Total",
+                self.n_outputs()
+            )
+        } else {
+            let min_damping = self
+                .proportional_damping_vec
+                .iter()
+                .cloned()
+                .fold(std::f64::INFINITY, f64::min);
+            let max_damping = self
+                .proportional_damping_vec
+                .iter()
+                .cloned()
+                .fold(std::f64::NEG_INFINITY, f64::max);
+            write!(
             f,
             "  - # of modes: {}\n  - first 5 eigen frequencies: {:9.3?}\n  - last 5 eigen frequencies: {:9.3?}\n  - damping coefficients [min;max]: [{:.4};{:.4}] \nINPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
             self.n_modes(),
@@ -252,5 +266,6 @@ impl fmt::Display for FEM {
             "Total",
             self.n_outputs()
         )
+        }
     }
 }
