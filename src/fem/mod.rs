@@ -199,6 +199,58 @@ impl FEM {
             .cloned()
             .collect()
     }
+    /// Return the static gain reduced to the turned-on inputs and outputs
+    pub fn reduced_static_gain(
+        &mut self,
+        inputs_id: &[usize],
+        outputs_id: &[usize],
+    ) -> Option<Vec<f64>> {
+        let n_io = (self.n_inputs(), self.n_outputs());
+        println!("N_IO: {:?}", n_io);
+        self.keep_inputs(inputs_id);
+        self.keep_outputs(outputs_id);
+        let n_reduced_io = (self.n_inputs(), self.n_outputs());
+        println!("N_REDUCED_IO: {:?}", n_reduced_io);
+        self.static_gain.as_ref().map(|gain| {
+            let indices: Vec<u32> = self
+                .inputs
+                .iter()
+                .filter_map(|x| x.as_ref())
+                .flat_map(|v| {
+                    v.iter().filter_map(|x| match x {
+                        IO::On(io) => Some(io.indices.clone()),
+                        IO::Off(_) => None,
+                    })
+                })
+                .flatten()
+                .collect();
+            let n = n_io.0;
+            let reduced_inputs_gain: Vec<f64> = gain
+                .chunks(n)
+                .flat_map(|x| {
+                    indices
+                        .iter()
+                        .map(|i| x[*i as usize - 1])
+                        .collect::<Vec<f64>>()
+                })
+                .collect();
+            let n = n_io.1;
+            let q: Vec<_> = reduced_inputs_gain.chunks(n).collect();
+            self.outputs
+                .iter()
+                .filter_map(|x| x.as_ref())
+                .flat_map(|v| {
+                    v.iter().filter_map(|x| match x {
+                        IO::On(io) => Some(io.indices.clone()),
+                        IO::Off(_) => None,
+                    })
+                })
+                .flatten()
+                .flat_map(|i| q[i as usize - 1])
+                .cloned()
+                .collect()
+        })
+    }
     /// Returns the FEM static gain for the turned-on inputs and outputs
     pub fn static_gain(&mut self) -> na::DMatrix<f64> {
         let forces_2_modes =
