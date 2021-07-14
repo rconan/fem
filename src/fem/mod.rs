@@ -146,12 +146,29 @@ impl FEM {
             if !id.contains(&k) {
                 *i = None
             } else {
-                i.as_mut().map(|i| {
+                if let Some(i) = i.as_mut() {
                     i.iter_mut().for_each(|io| {
                         *io = io.clone().switch_off();
                         *io = io.clone().switch_on_by(pred);
                     })
-                });
+                }
+            }
+        });
+        self
+    }
+    /// Filters the outputs according to some properties matching
+    pub fn filter_outputs_by<F>(&mut self, id: &[usize], pred: F) -> &mut Self
+    where
+        F: Fn(&IOData) -> bool + Copy,
+    {
+        self.outputs.iter_mut().enumerate().for_each(|(k, i)| {
+            if id.contains(&k) {
+                if let Some(i) = i.as_mut() {
+                    i.iter_mut().for_each(|io| {
+                        *io = io.clone().switch_off();
+                        *io = io.clone().switch_on_by(pred);
+                    })
+                }
             }
         });
         self
@@ -200,56 +217,50 @@ impl FEM {
             .collect()
     }
     /// Return the static gain reduced to the turned-on inputs and outputs
-    pub fn reduced_static_gain(
-        &mut self,
-        inputs_id: &[usize],
-        outputs_id: &[usize],
-    ) -> Option<Vec<f64>> {
-        let n_io = (self.n_inputs(), self.n_outputs());
-        println!("N_IO: {:?}", n_io);
-        self.keep_inputs(inputs_id);
-        self.keep_outputs(outputs_id);
+    pub fn reduced_static_gain(&mut self, n_io: (usize, usize)) -> Option<na::DMatrix<f64>> {
         let n_reduced_io = (self.n_inputs(), self.n_outputs());
-        println!("N_REDUCED_IO: {:?}", n_reduced_io);
-        self.static_gain.as_ref().map(|gain| {
-            let indices: Vec<u32> = self
-                .inputs
-                .iter()
-                .filter_map(|x| x.as_ref())
-                .flat_map(|v| {
-                    v.iter().filter_map(|x| match x {
-                        IO::On(io) => Some(io.indices.clone()),
-                        IO::Off(_) => None,
+        self.static_gain
+            .as_ref()
+            .map(|gain| {
+                let indices: Vec<u32> = self
+                    .inputs
+                    .iter()
+                    .filter_map(|x| x.as_ref())
+                    .flat_map(|v| {
+                        v.iter().filter_map(|x| match x {
+                            IO::On(io) => Some(io.indices.clone()),
+                            IO::Off(_) => None,
+                        })
                     })
-                })
-                .flatten()
-                .collect();
-            let n = n_io.0;
-            let reduced_inputs_gain: Vec<f64> = gain
-                .chunks(n)
-                .flat_map(|x| {
-                    indices
-                        .iter()
-                        .map(|i| x[*i as usize - 1])
-                        .collect::<Vec<f64>>()
-                })
-                .collect();
-            let n = n_io.1;
-            let q: Vec<_> = reduced_inputs_gain.chunks(n).collect();
-            self.outputs
-                .iter()
-                .filter_map(|x| x.as_ref())
-                .flat_map(|v| {
-                    v.iter().filter_map(|x| match x {
-                        IO::On(io) => Some(io.indices.clone()),
-                        IO::Off(_) => None,
+                    .flatten()
+                    .collect();
+                let n = n_io.0;
+                let reduced_inputs_gain: Vec<f64> = gain
+                    .chunks(n)
+                    .flat_map(|x| {
+                        indices
+                            .iter()
+                            .map(|i| x[*i as usize - 1])
+                            .collect::<Vec<f64>>()
                     })
-                })
-                .flatten()
-                .flat_map(|i| q[i as usize - 1])
-                .cloned()
-                .collect()
-        })
+                    .collect();
+                let n = n_reduced_io.0;
+                let q: Vec<_> = reduced_inputs_gain.chunks(n).collect();
+                self.outputs
+                    .iter()
+                    .filter_map(|x| x.as_ref())
+                    .flat_map(|v| {
+                        v.iter().filter_map(|x| match x {
+                            IO::On(io) => Some(io.indices.clone()),
+                            IO::Off(_) => None,
+                        })
+                    })
+                    .flatten()
+                    .flat_map(|i| q[i as usize - 1])
+                    .cloned()
+                    .collect::<Vec<f64>>()
+            })
+            .map(|new_gain| na::DMatrix::from_row_slice(n_reduced_io.1, n_reduced_io.0, &new_gain))
     }
     /// Returns the FEM static gain for the turned-on inputs and outputs
     pub fn static_gain(&mut self) -> na::DMatrix<f64> {
