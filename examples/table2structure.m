@@ -48,14 +48,15 @@ end
 fem_outputs = ws;
 %%
 if iscell(modelDescription) 
-    modelDescription = uint32(modelDescription{1});
+    modelDescription = uint16(modelDescription{1});
 else
     if isstring(modelDescription)
-        modelDescription = uint32(char(modelDescription));
+        modelDescription = uint16(char(modelDescription));
     else
-        modelDescription = uint32(modelDescription);
+        modelDescription = uint16(modelDescription);
     end
 end
+modelDescription(modelDescription>255) = 255;
 %%
 if exist('eigenfrequencies','var') && ...
         exist('inputs2ModalF','var') && ...
