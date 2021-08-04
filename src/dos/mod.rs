@@ -134,6 +134,7 @@ io_match_fem!(
             OSSCellLcl6F,
             OSSM1Lcl6F,
             MCM2Lcl6F,
+            MCM2LclForce6F,
             OSSAzDriveF,
             OSSElDriveF,
             OSSGIRDriveF,
@@ -158,7 +159,9 @@ io_match_fem!(
             MCM2S6VCDeltaF,
             MCM2S6FluidDampingF,
             MCM2S7VCDeltaF,
-            MCM2S7FluidDampingF
+            MCM2S7FluidDampingF,
+            MCM2PZTF,
+            OSSMirrorCovers6F
         ),
     outputs:
         (
@@ -192,7 +195,9 @@ io_match_fem!(
             MCM2S5VCDeltaD,
             MCM2S6VCDeltaD,
             MCM2S7VCDeltaD,
-            M2edgesensors
+            M2edgesensors,
+            MCM2PZTD,
+            OSSMirrorCovers6D
         )
 );
 

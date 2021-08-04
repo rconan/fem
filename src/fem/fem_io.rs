@@ -108,6 +108,8 @@ fem_io!(Inputs:
         M1DistributedWindf,
         "MC_M2_Grav_CS0",
         MCM2GravCS0,
+    "MC_M2_PZT_F",
+    MCM2PZTF,
         "MC_M2_PZT_S1_F",
         MCM2PZTS1F,
         "MC_M2_PZT_S2_F",
@@ -124,6 +126,8 @@ fem_io!(Inputs:
         MCM2PZTS7F,
         "MC_M2_lcl_6F",
         MCM2Lcl6F,
+        "MC_M2_lcl_force_6F",
+        MCM2LclForce6F,
         "MC_M2_small_S1_6F",
         MCM2SmallS16F,
         "MC_M2_small_S2_6F",
@@ -195,7 +199,9 @@ fem_io!(Inputs:
          "MC_M2_S7_VC_delta_F",
          MCM2S7VCDeltaF,
     "MC_M2_S7_fluid_damping_F",
-    MCM2S7FluidDampingF
+    MCM2S7FluidDampingF,
+    "OSS_mirrorCovers_6F",
+    OSSMirrorCovers6F
 );
 fem_io!(Outputs:
         "OSS_TrussIF_6D",
@@ -226,6 +232,8 @@ fem_io!(Outputs:
         OSSCellLcl,
         "MC_M2_small_S1_6D",
         MCM2SmallS16D,
+    "MC_M2_PZT_D",
+    MCM2PZTD,
         "MC_M2_PZT_S1_D",
         MCM2PZTS1D,
         "MC_M2_small_S2_6D",
@@ -345,5 +353,7 @@ fem_io!(Outputs:
     "MC_M2_S6_VC_delta_D",
     MCM2S6VCDeltaD,
     "MC_M2_S7_VC_delta_D",
-    MCM2S7VCDeltaD
+    MCM2S7VCDeltaD,
+    "OSS_mirrorCovers_6D",
+    OSSMirrorCovers6D
 );
