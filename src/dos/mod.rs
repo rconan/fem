@@ -95,111 +95,7 @@ impl std::error::Error for StateSpaceError {
 type Result<T> = std::result::Result<T, StateSpaceError>;
 type StateSpaceIO = Option<Vec<Tags>>;
 
-pub trait MatchFEM {
-    fn match_fem_inputs(&self, fem_inputs: &fem::fem_io::Inputs) -> Option<Vec<crate::io::IO>>;
-    fn match_fem_outputs(&self, fem_outputs: &fem::fem_io::Outputs) -> Option<Vec<crate::io::IO>>;
-}
-macro_rules! io_match_fem {
-    (inputs: ($($inputs_variant:ident),+), outputs: ($($outputs_variant:ident),+)) => {
-        impl<T: Debug> MatchFEM for IO<T> {
-            /// Matches a FEM input to a DOS `IO` returning the FEM input value
-            fn match_fem_inputs(&self, fem_inputs: &fem::fem_io::Inputs) -> Option<Vec<crate::io::IO>> {
-                match (self,fem_inputs) {
-                    $((IO::$inputs_variant{data: _}, fem::fem_io::Inputs::$inputs_variant(v)) => {
-                        Some(v.clone())},)+
-                    (_, _) => None,
-                }
-            }
-            /// Matches a FEM output to a DOS `IO` returning the FEM output value
-            fn match_fem_outputs(&self, fem_outputs: &fem::fem_io::Outputs) -> Option<Vec<crate::io::IO>> {
-                match (self,fem_outputs) {
-                    $((IO::$outputs_variant{data: _}, fem::fem_io::Outputs::$outputs_variant(v)) => Some(v.clone()),)+
-                        (_, _) => None,
-                }
-            }
-        }
-    };
-}
-
-io_match_fem!(
-    inputs:
-        (
-            MCM2RB6F,
-            MCASMCOG6F,
-            MCM2TE6F,
-            OSSTopEnd6F,
-            OSSTruss6F,
-            OSSGIR6F,
-            OSSCRING6F,
-            OSSCellLcl6F,
-            OSSM1Lcl6F,
-            MCM2Lcl6F,
-            MCM2LclForce6F,
-            OSSAzDriveF,
-            OSSElDriveF,
-            OSSGIRDriveF,
-            OSSHarpointDeltaF,
-            OSSAzDriveTorque,
-            OSSElDriveTorque,
-            OSSRotDriveTorque,
-            OSSM1FansLcl6F,
-            OSSPayloads6F,
-            MCM2PMA1F,
-            MCM2SmHexF,
-            MCM2S1VCDeltaF,
-            MCM2S1FluidDampingF,
-            MCM2S2VCDeltaF,
-            MCM2S2FluidDampingF,
-            MCM2S3VCDeltaF,
-            MCM2S3FluidDampingF,
-            MCM2S4VCDeltaF,
-            MCM2S4FluidDampingF,
-            MCM2S5VCDeltaF,
-            MCM2S5FluidDampingF,
-            MCM2S6VCDeltaF,
-            MCM2S6FluidDampingF,
-            MCM2S7VCDeltaF,
-            MCM2S7FluidDampingF,
-            MCM2PZTF,
-            OSSMirrorCovers6F
-        ),
-    outputs:
-        (
-            OSSAzDriveD,
-            OSSElDriveD,
-            OSSGIRDriveD,
-            OSSM1Lcl,
-            MCM2Lcl6D,
-            OSSHardpointD,
-            OSSAzEncoderAngle,
-            OSSElEncoderAngle,
-            OSSRotEncoderAngle,
-            MCM2RB6D,
-            MCASMCOG6D,
-            MCM2TE6D,
-            OSSM1FansLcl6D,
-            OSSPayloads6D,
-            MCM2PMA1D,
-            MCM2SmHexD,
-            M2segment1axiald,
-            M2segment2axiald,
-            M2segment3axiald,
-            M2segment4axiald,
-            M2segment5axiald,
-            M2segment6axiald,
-            M2segment7axiald,
-            MCM2S1VCDeltaD,
-            MCM2S2VCDeltaD,
-            MCM2S3VCDeltaD,
-            MCM2S4VCDeltaD,
-            MCM2S5VCDeltaD,
-            MCM2S6VCDeltaD,
-            MCM2S7VCDeltaD,
-            M2edgesensors,
-            MCM2PZTD,
-            OSSMirrorCovers6D
-        )
-);
+fem_proc::match_maker! {}
 
 /// This structure is the state space model builder based on a builder pattern design
 #[derive(Default)]
@@ -299,7 +195,7 @@ impl DiscreteStateSpace {
         self.outputs(element.inputs_tags())
     }
     fn select_fem_io(fem: &mut fem::FEM, dos_inputs: &[Tags], dos_outputs: &[Tags]) {
-        log::info!("## WHOLE FEM ##\n{}", fem);
+        log::debug!("\n## WHOLE FEM ##\n{}", fem);
         let inputs_idx: Vec<_> = fem
             .inputs
             .iter()
@@ -321,7 +217,7 @@ impl DiscreteStateSpace {
             })
             .collect();
         fem.keep_inputs(&inputs_idx).keep_outputs(&outputs_idx);
-        log::info!("## REDUCED FEM ##\n{}", fem);
+        log::info!("\n## REDUCED FEM ##\n{}", fem);
     }
     fn io2modes(fem: &fem::FEM, dos_inputs: &[Tags]) -> Result<Vec<f64>> {
         use crate::io::IO;
@@ -641,7 +537,7 @@ impl Dos for DiscreteModalSolver<Exponential> {
             })
             .transpose()?
             .map(|x| x.into_iter().flatten().collect::<Vec<f64>>())
-            .unwrap();
+            .ok_or(DOSIOSError::Inputs("FEM inputs missing!".into()))?;
         Ok(self)
     }
     fn outputs(&mut self) -> Option<Vec<IO<Self::Output>>> {

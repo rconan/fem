@@ -3,24 +3,27 @@ use nalgebra as na;
 use serde;
 use serde::Deserialize;
 use serde_pickle as pkl;
-use std::fmt;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
+use std::{env, fmt, fs::File, io::BufReader, path::Path};
 
 pub mod fem_io;
 
-#[derive(Debug)]
 pub enum FEMError {
     FileNotFound(std::io::Error),
     PickleRead(serde_pickle::Error),
+    EnvVar(env::VarError),
 }
 impl fmt::Display for FEMError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::FileNotFound(e) => write!(f, "wind loads data file not found: {}", e),
             Self::PickleRead(e) => write!(f, "cannot read wind loads data file: {}", e),
+            Self::EnvVar(e) => write!(f, "environment variable {} is not set", e),
         }
+    }
+}
+impl fmt::Debug for FEMError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <FEMError as std::fmt::Display>::fmt(self, f)
     }
 }
 impl From<std::io::Error> for FEMError {
@@ -33,11 +36,17 @@ impl From<serde_pickle::Error> for FEMError {
         Self::PickleRead(e)
     }
 }
+impl From<env::VarError> for FEMError {
+    fn from(e: env::VarError) -> Self {
+        Self::EnvVar(e)
+    }
+}
 impl std::error::Error for FEMError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::FileNotFound(source) => Some(source),
             Self::PickleRead(source) => Some(source),
+            Self::EnvVar(source) => Some(source),
         }
     }
 }
@@ -52,7 +61,7 @@ pub struct FEM {
     pub inputs: Vec<Option<fem_io::Inputs>>,
     /// outputs properties
     pub outputs: Vec<Option<fem_io::Outputs>>,
-    /// mode shapes eigen frequencies [Hz]
+    /// mode shapes eigen frequencies \[Hz\]
     #[serde(rename = "eigenfrequencies")]
     pub eigen_frequencies: Vec<f64>,
     /// inputs forces to modal forces matrix [n_modes,n_inputs] (row wise)
@@ -68,12 +77,17 @@ pub struct FEM {
     pub static_gain: Option<Vec<f64>>,
 }
 impl FEM {
-    /// Loads a FEM model saved in a second order from in a pickle file
+    /// Loads a FEM model saved in a second order from a pickle file
     pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM, FEMError> {
         let f = File::open(path)?;
         let r = BufReader::with_capacity(1_000_000, f);
         let v: serde_pickle::Value = serde_pickle::from_reader(r)?;
         Ok(pkl::from_value(v)?)
+    }
+    /// Loads a FEM model saved in a second order from a pickle file "modal_state_space_model_2ndOrder.73.pkl" located in a directory given by the `FEM)REPO` environment variable
+    pub fn from_env() -> Result<Self, FEMError> {
+        let fem_repo = env::var("FEM_REPO")?;
+        Self::from_pickle(Path::new(&fem_repo).join("modal_state_space_model_2ndOrder.73.pkl"))
     }
     /// Gets the number of modes
     pub fn n_modes(&self) -> usize {

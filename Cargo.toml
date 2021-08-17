@@ -4,8 +4,10 @@ version = "0.1.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2018"
 
+[workspace]
+members = ["fem-proc"]
+
 [dependencies]
-dosio = { git = "https://github.com/rconan/dosio.git", branch = "main", optional = true }
 log = { version = "0.4.14", optional = true }
 nalgebra = "0.28.0"
 num-complex = { version = "0.4.0", optional = true }
@@ -14,6 +16,8 @@ serde = { version = "1.0.119", features = ["derive"] }
 serde-pickle = "0.6.2"
 simple_logger = "1.11.0"
 structopt = "0.3.21"
+fem-proc = { path = "fem-proc" }
+dosio = { git = "https://github.com/rconan/dosio.git", branch = "ns-opm-im", optional = true }
 
 [features]
 dos = ["dosio", "rayon", "log", "num-complex"]
