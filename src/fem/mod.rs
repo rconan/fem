@@ -15,7 +15,7 @@ pub enum FEMError {
 impl fmt::Display for FEMError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::FileNotFound(e) => write!(f, "wind loads data file not found: {}", e),
+            Self::FileNotFound(e) => write!(f, "FEM data file not found: {}", e),
             Self::PickleRead(e) => write!(f, "cannot read wind loads data file: {}", e),
             Self::EnvVar(e) => write!(f, "environment variable {} is not set", e),
         }
@@ -87,6 +87,7 @@ impl FEM {
     /// Loads a FEM model saved in a second order from a pickle file "modal_state_space_model_2ndOrder.73.pkl" located in a directory given by the `FEM)REPO` environment variable
     pub fn from_env() -> Result<Self, FEMError> {
         let fem_repo = env::var("FEM_REPO")?;
+        println!("Loading FEM from modal_state_space_model_2ndOrder.73.pkl...");
         Self::from_pickle(Path::new(&fem_repo).join("modal_state_space_model_2ndOrder.73.pkl"))
     }
     /// Gets the number of modes
