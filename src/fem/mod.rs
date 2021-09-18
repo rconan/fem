@@ -231,6 +231,22 @@ impl FEM {
             .cloned()
             .collect()
     }
+    /// Returns the modes 2 outputs transformation matrix for a given output
+    pub fn modes2output(&self, id: usize) -> Option<Vec<f64>> {
+        let q: Vec<_> = self.modal_disp_to_outputs.chunks(self.n_modes()).collect();
+        self.outputs[id].as_ref().map(|output| {
+            output
+                .iter()
+                .filter_map(|x| match x {
+                    IO::On(io) => Some(io.indices.clone()),
+                    IO::Off(_) => None,
+                })
+                .flatten()
+                .flat_map(|i| q[i as usize - 1])
+                .cloned()
+                .collect()
+        })
+    }
     /// Return the static gain reduced to the turned-on inputs and outputs
     pub fn reduced_static_gain(&mut self, n_io: (usize, usize)) -> Option<na::DMatrix<f64>> {
         let n_reduced_io = (self.n_inputs(), self.n_outputs());
