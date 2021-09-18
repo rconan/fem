@@ -8,9 +8,8 @@ edition = "2018"
 members = ["fem-proc"]
 
 [dependencies]
-log = { version = "0.4.14", optional = true }
+triangle-rs = { git = "https://github.com/rconan/triangle-rs.git", branch = "main" }
 num-complex = { version = "0.4.0", optional = true }
-rayon = { version = "1.5.1", optional = true }
 serde = { version = "1.0.119", features = ["derive"] }
 serde-pickle = "0.6.2"
 simple_logger = "1.11.0"
@@ -18,16 +17,19 @@ structopt = "0.3.21"
 fem-proc = { path = "fem-proc" }
 dosio = { git = "https://github.com/rconan/dosio.git", branch = "ns-opm-im", optional = true }
 nalgebra = "0.29.0"
+geotrans = { git = "https://github.com/rconan/geotrans.git", branch = "main" }
+env_logger = "0.9.0"
+log = "0.4.14"
+complot = { git = "https://github.com/rconan/complot.git", branch = "ns-opm-im" }
+rayon = "1.5.1"
+spade = "1.8.2"
 
 [features]
-dos = ["dosio", "rayon", "log", "num-complex"]
+dos = ["dosio", "num-complex"]
 
 [dev-dependencies]
 plotters = "0.3.0"
 datax = { path = "../datax" }
-complot = { git = "https://github.com/rconan/complot.git", branch = "main" }
-geotrans = { git = "https://github.com/rconan/geotrans.git", branch = "main" }
-spade = "1.8.2"
 rstar = "0.8.2"
 rayon = "1.5.0"
 rustfft = "5.0.1"
