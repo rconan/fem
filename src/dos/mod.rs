@@ -176,7 +176,7 @@ impl DiscreteStateSpace {
 
         Self { u: Some(u), ..self }
     }
-    pub fn inputs_with<'a>(self, v_u: Vec<Tags>, u_mat: impl Iterator<Item = &'a [f64]>) -> Self {
+    pub fn inputs_with(self, v_u: Vec<Tags>, u_mat: impl Iterator<Item = Vec<f64>>) -> Self {
         let mut u = self.u.unwrap_or(vec![]);
         v_u.iter().zip(u_mat).for_each(|(t, mat)| {
             let io: IO<Vec<f64>> = (t, Some(mat.to_owned())).into();
@@ -198,7 +198,7 @@ impl DiscreteStateSpace {
         });
         Self { y: Some(y), ..self }
     }
-    pub fn outputs_with<'a>(self, v_y: Vec<Tags>, y_mat: impl Iterator<Item = &'a [f64]>) -> Self {
+    pub fn outputs_with(self, v_y: Vec<Tags>, y_mat: impl Iterator<Item = Vec<f64>>) -> Self {
         let mut y = self.y.unwrap_or(vec![]);
         v_y.iter().zip(y_mat).for_each(|(t, mat)| {
             let io: IO<Vec<f64>> = (t, Some(mat.to_owned())).into();
@@ -290,16 +290,6 @@ impl DiscreteStateSpace {
                 .to_vec()
             })
             .collect())
-        /*Ok(fem
-        .inputs_to_modal_forces
-        .chunks(n)
-        .flat_map(|x| {
-            indices
-                .iter()
-                .map(|i| x[*i as usize - 1])
-                .collect::<Vec<f64>>()
-        })
-        .collect())*/
     }
     fn modes2io(fem: &fem::FEM, dos_outputs: &StateSpaceIO) -> Result<Vec<Vec<f64>>> {
         use crate::io::IO;
@@ -391,20 +381,19 @@ impl DiscreteStateSpace {
             })
             .collect();
         Self::select_fem_io(&mut fem, self.u.as_ref().unwrap(), self.y.as_ref().unwrap());
-        let forces_2_modes = na::DMatrix::from_column_slice(
-            fem.n_modes(),
-            fem.n_inputs(),
-            &Self::io2modes(&fem, self.u.as_ref().unwrap())?,
-        );
+        let n_mode = fem.n_modes();
+        let fem_io2modes = Self::io2modes(&fem, self.u.as_ref().unwrap())?;
+        let forces_2_modes =
+            na::DMatrix::from_column_slice(n_mode, fem_io2modes.len() / n_mode, &fem_io2modes);
         log::info!("forces 2 modes: {:?}", forces_2_modes.shape());
-        let fem_modes2io = Self::modes2io(&fem, self.y.as_ref().unwrap())?;
-        let sizes: Vec<_> = fem_modes2io
-            .iter()
-            .map(|f| f.len() / fem.n_modes())
-            .collect();
+        let (sizes, fem_modes2io): (Vec<_>, Vec<_>) =
+            Self::modes2io(&fem, self.y.as_ref().unwrap())?
+                .into_iter()
+                .map(|f| (f.len() / fem.n_modes(), f))
+                .unzip();
         let modes_2_nodes = na::DMatrix::from_row_slice(
-            fem.n_outputs(),
-            fem.n_modes(),
+            sizes.iter().sum::<usize>(),
+            n_mode,
             &fem_modes2io.into_iter().flatten().collect::<Vec<f64>>(),
         );
         log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());

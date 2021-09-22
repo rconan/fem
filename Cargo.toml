@@ -16,13 +16,14 @@ simple_logger = "1.11.0"
 structopt = "0.3.21"
 fem-proc = { path = "fem-proc" }
 dosio = { git = "https://github.com/rconan/dosio.git", branch = "ns-opm-im", optional = true }
-nalgebra = "0.29.0"
+nalgebra = { version = "0.29.0" , features = ["rand"] }
 geotrans = { git = "https://github.com/rconan/geotrans.git", branch = "main" }
 env_logger = "0.9.0"
 log = "0.4.14"
 complot = { git = "https://github.com/rconan/complot.git", branch = "ns-opm-im" }
 rayon = "1.5.1"
 spade = "1.8.2"
+bincode = "1.3.3"
 
 [features]
 dos = ["dosio", "num-complex"]
