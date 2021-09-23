@@ -537,4 +537,80 @@ mod tests {
             complot::tri::Heatmap::from((data, Some(complot::Config::new().filename(filename))));
         }
     }
+
+    #[test]
+    fn m1_s1_b2b() {
+        let fem_path = Path::new("/home/ubuntu/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl");
+        let mut fem = FEM::from_pickle(fem_path).unwrap();
+        //    println!("{}", fem);
+        let n_io = (fem.n_inputs(), fem.n_outputs());
+        let sid = 1;
+        fem.keep_inputs(&[sid - 1]);
+        fem.keep_outputs_by(&[sid], |x| x.descriptions.contains(&format!("M1-S{}", sid)));
+        println!("{}", fem);
+
+        let nodes = fem.outputs[sid]
+            .as_ref()
+            .unwrap()
+            .get_by(|x| x.properties.location.as_ref().map(|x| x.to_vec()))
+            .into_iter()
+            .flatten()
+            .collect::<Vec<f64>>();
+        let n_node = nodes.len() / 3;
+
+        let file = File::open("m1_eigen_modes.bin").unwrap();
+        let data: Vec<(Vec<f64>, Vec<f64>)> = bincode::deserialize_from(file).unwrap();
+        let (eigens, coefs2forces) = &data[sid - 1];
+        let n_eigen_mode = eigens.len() / n_node;
+
+        let gain = fem.reduced_static_gain(n_io).unwrap();
+
+        let coefs = na::DVector::from_column_slice(&[1e-6, 0., 0.]);
+        let forces = na::DMatrix::from_column_slice(
+            coefs2forces.len() / n_eigen_mode,
+            n_eigen_mode,
+            &coefs2forces,
+        )
+        .columns(0, coefs.nrows())
+            * &coefs;
+
+        let surface = gain * forces;
+
+        let (t_xyz, r_xyz) = rbm.split_at(3);
+        let rxyz_surface = {
+            // 3D rotation of mirror surface nodes
+            let q = Quaternion::unit(r_xyz[2], Vector::k())
+                * Quaternion::unit(r_xyz[1], Vector::j())
+                * Quaternion::unit(r_xyz[0], Vector::i());
+            let trans_nodes: Vec<f64> = nodes
+                .chunks(3)
+                .flat_map(|x| {
+                    let p: Quaternion = Vector::from(x).into();
+                    let w: Quaternion = &q * p * &q.complex_conjugate();
+                    let vv: Vec<f64> = (*Vector::from(w.vector_as_slice())).into();
+                    vv
+                })
+                .collect();
+            trans_nodes
+                .chunks(3)
+                .map(|x| x[2])
+                .zip(nodes.chunks(3).map(|x| x[2]))
+                .map(|(z_rbm, z)| z_rbm - z)
+                .collect::<Vec<f64>>()
+        };
+        // Removing Rx, Ry, Rz and Tz
+        surface
+            .iter()
+            .zip(rxyz_surface.iter())
+            .map(|(a, r)| a - r - t_xyz[2])
+            .collect::<Vec<f64>>();
+
+        let m1_s1_eigens = na::DMatrix::from_column_slice(n_node, n_eigen_mode, eigens);
+        let m1_s1_coefs_from_figure = m1_s1_eigens.columns(0, 3).transpose() * surface;
+        println!("Eigen modes coefs in/out:");
+        m1_s1_coefs_from_figure
+            .iter()
+            .zip(coefs.iter())
+            .for_each(|(o, i)| println!("{:7.3}/{:7.3}", i * 1e6, o * 1e6));
+    }
 }
