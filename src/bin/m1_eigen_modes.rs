@@ -27,15 +27,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n = 101; // sampling
     let width = 8.4; // segment map width
 
-    let fem_path = Path::new("/home/rconan/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl");
+    let home = std::env::var("HOME")?;
+    let fem_path = Path::new(&home);
+
     let m1_eigen_modes = (1..=1)
         .map(|sid| {
             println!(
                 "Segment #{} - STEP #1: loading the FEM from {:?}",
-                sid, fem_path
+                sid, fem_path.join(
+        "projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl",
+    )
             );
             let now = Instant::now();
-            let mut fem = FEM::from_pickle(fem_path)?;
+            let mut fem = FEM::from_pickle(fem_path.join(
+        "projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl",
+    ))?;
             //    println!("{}", fem);
             let n_io = (fem.n_inputs(), fem.n_outputs());
             fem.keep_inputs(&[sid - 1]);
@@ -391,7 +397,7 @@ mod tests {
     use super::*;
     #[test]
     fn m1_s1_rbm() {
-        let fem_path = Path::new("/home/rconan/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl");
+        let fem_path = Path::new("/home/ubuntu/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl");
         let mut fem = FEM::from_pickle(fem_path).unwrap();
         //    println!("{}", fem);
         let n_io = (fem.n_inputs(), fem.n_outputs());
@@ -539,7 +545,7 @@ mod tests {
     }
 
     #[test]
-    fn m1_s1_b2b() {
+    fn m1_s1_st_b2b_static() {
         let fem_path = Path::new("/home/ubuntu/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl");
         let mut fem = FEM::from_pickle(fem_path).unwrap();
         //    println!("{}", fem);
@@ -576,34 +582,97 @@ mod tests {
 
         let surface = gain * forces;
 
-        let (t_xyz, r_xyz) = rbm.split_at(3);
-        let rxyz_surface = {
-            // 3D rotation of mirror surface nodes
-            let q = Quaternion::unit(r_xyz[2], Vector::k())
-                * Quaternion::unit(r_xyz[1], Vector::j())
-                * Quaternion::unit(r_xyz[0], Vector::i());
-            let trans_nodes: Vec<f64> = nodes
-                .chunks(3)
-                .flat_map(|x| {
-                    let p: Quaternion = Vector::from(x).into();
-                    let w: Quaternion = &q * p * &q.complex_conjugate();
-                    let vv: Vec<f64> = (*Vector::from(w.vector_as_slice())).into();
-                    vv
-                })
-                .collect();
-            trans_nodes
-                .chunks(3)
-                .map(|x| x[2])
-                .zip(nodes.chunks(3).map(|x| x[2]))
-                .map(|(z_rbm, z)| z_rbm - z)
-                .collect::<Vec<f64>>()
-        };
-        // Removing Rx, Ry, Rz and Tz
-        surface
+        {
+            let delaunay = triangle_rs::Builder::new()
+                .set_tri_points(
+                    nodes
+                        .clone()
+                        .chunks(3)
+                        .map(|x| x[..2].to_vec())
+                        .flatten()
+                        .collect::<Vec<f64>>(),
+                )
+                .set_switches("Q")
+                .build();
+
+            let u = surface.as_slice();
+            let cells = delaunay
+                .triangle_iter()
+                .map(|t| t.iter().fold(0., |a, &i| a + u[i] / 3.))
+                .map(|x| x * 1e6);
+            let data = delaunay.triangle_vertex_iter().zip(cells.into_iter());
+            let filename = "test_m1_s1_b2b_static.svg";
+            complot::tri::Heatmap::from((data, Some(complot::Config::new().filename(filename))));
+        }
+
+        let m1_s1_eigens = na::DMatrix::from_column_slice(n_node, n_eigen_mode, eigens);
+        let m1_s1_coefs_from_figure = m1_s1_eigens.columns(0, 3).transpose() * surface;
+        println!("Eigen modes coefs in/out:");
+        m1_s1_coefs_from_figure
             .iter()
-            .zip(rxyz_surface.iter())
-            .map(|(a, r)| a - r - t_xyz[2])
+            .zip(coefs.iter())
+            .for_each(|(o, i)| println!("{:7.3}/{:7.3}", i * 1e6, o * 1e6));
+    }
+
+    #[test]
+    fn m1_s1_st_b2b_dynamic() {
+        let mut fem = FEM::from_env().unwrap();
+        //    println!("{}", fem);
+        let n_io = (fem.n_inputs(), fem.n_outputs());
+        let sid = 1;
+        fem.keep_inputs(&[sid - 1]);
+        fem.keep_outputs_by(&[sid], |x| x.descriptions.contains(&format!("M1-S{}", sid)));
+        println!("{}", fem);
+
+        let nodes = fem.outputs[sid]
+            .as_ref()
+            .unwrap()
+            .get_by(|x| x.properties.location.as_ref().map(|x| x.to_vec()))
+            .into_iter()
+            .flatten()
             .collect::<Vec<f64>>();
+        let n_node = nodes.len() / 3;
+
+        let file = File::open("m1_eigen_modes.bin").unwrap();
+        let data: Vec<(Vec<f64>, Vec<f64>)> = bincode::deserialize_from(file).unwrap();
+        let (eigens, coefs2forces) = &data[sid - 1];
+        let n_eigen_mode = eigens.len() / n_node;
+
+        let gain = fem.static_gain();
+
+        let coefs = na::DVector::from_column_slice(&[1e-6, 0., 0.]);
+        let forces = na::DMatrix::from_column_slice(
+            coefs2forces.len() / n_eigen_mode,
+            n_eigen_mode,
+            &coefs2forces,
+        )
+        .columns(0, coefs.nrows())
+            * &coefs;
+
+        let surface = gain * forces;
+
+        {
+            let delaunay = triangle_rs::Builder::new()
+                .set_tri_points(
+                    nodes
+                        .clone()
+                        .chunks(3)
+                        .map(|x| x[..2].to_vec())
+                        .flatten()
+                        .collect::<Vec<f64>>(),
+                )
+                .set_switches("Q")
+                .build();
+
+            let u = surface.as_slice();
+            let cells = delaunay
+                .triangle_iter()
+                .map(|t| t.iter().fold(0., |a, &i| a + u[i] / 3.))
+                .map(|x| x * 1e6);
+            let data = delaunay.triangle_vertex_iter().zip(cells.into_iter());
+            let filename = "test_m1_s1_b2b_dynamic.svg";
+            complot::tri::Heatmap::from((data, Some(complot::Config::new().filename(filename))));
+        }
 
         let m1_s1_eigens = na::DMatrix::from_column_slice(n_node, n_eigen_mode, eigens);
         let m1_s1_coefs_from_figure = m1_s1_eigens.columns(0, 3).transpose() * surface;
