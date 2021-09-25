@@ -186,8 +186,10 @@ impl DiscreteStateSpace {
         Self { u: Some(u), ..self }
     }
     /// Sets the model inputs based on the outputs of another component
-    pub fn inputs_from(self, element: &dyn IOTags) -> Self {
-        self.inputs(element.outputs_tags())
+    pub fn inputs_from(self, elements: &[&dyn IOTags]) -> Self {
+        elements
+            .iter()
+            .fold(self, |this, element| this.inputs(element.outputs_tags()))
     }
     /// Sets the model outputs from a vector of [IO]
     pub fn outputs(self, v_y: Vec<Tags>) -> Self {
@@ -207,8 +209,10 @@ impl DiscreteStateSpace {
         Self { y: Some(y), ..self }
     }
     /// Sets the model outputs based on the inputs of another component
-    pub fn outputs_to(self, element: &dyn IOTags) -> Self {
-        self.outputs(element.inputs_tags())
+    pub fn outputs_to(self, elements: &[&dyn IOTags]) -> Self {
+        elements
+            .iter()
+            .fold(self, |this, element| this.outputs(element.inputs_tags()))
     }
     fn select_fem_io(fem: &mut fem::FEM, dos_inputs: &StateSpaceIO, dos_outputs: &StateSpaceIO) {
         log::debug!("\n## WHOLE FEM ##\n{}", fem);
@@ -482,6 +486,15 @@ pub struct DiscreteModalSolver<T> {
     /// vector of state models
     pub state_space: Vec<T>,
 }
+impl<T> DiscreteModalSolver<T> {
+    pub fn zeroed_outputs(&self) -> Vec<IO<Vec<f64>>> {
+        self.y_tags
+            .iter()
+            .zip(self.y_sizes.iter())
+            .map(|(t, &n)| (t, vec![0f64; n]).into())
+            .collect()
+    }
+}
 impl From<(SecondOrder, f64)> for DiscreteModalSolver<Exponential> {
     fn from((second_order, sampling_rate): (SecondOrder, f64)) -> Self {
         let n_in = second_order.n_u();
@@ -635,6 +648,21 @@ impl IOTags for DiscreteModalSolver<Exponential> {
     }
     fn inputs_tags(&self) -> Vec<Tags> {
         self.u_tags.clone()
+    }
+}
+impl fmt::Display for DiscreteModalSolver<Exponential> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            r##"
+FEM
+ - inputs:
+ {:#?}
+ - inputs:
+ {:#?}
+"##,
+            &self.u_tags, &self.y_tags,
+        )
     }
 }
 
