@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let home = std::env::var("HOME")?;
     let fem_path = Path::new(&home);
 
-    let m1_eigen_modes = (1..=1)
+    let m1_eigen_modes = (1..=7)
         .map(|sid| {
             println!(
                 "Segment #{} - STEP #1: loading the FEM from {:?}",
@@ -45,9 +45,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             //    println!("{}", fem);
             let n_io = (fem.n_inputs(), fem.n_outputs());
             fem.keep_inputs(&[sid - 1]);
-            fem.keep_outputs_by(&[sid, 25], |x| {
+            fem.keep_outputs(&[sid, 24, 25]);
+            fem.filter_outputs_by(&[sid, 25], |x| {
                 x.descriptions.contains(&format!("M1-S{}", sid))
             });
+            /*fem.keep_outputs_by(&[sid, 25], |x| {
+                x.descriptions.contains(&format!("M1-S{}", sid))
+            });*/
             println!("{}", fem);
             println!(" ... in {}ms", now.elapsed().as_millis());
 
@@ -75,7 +79,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 "ROTATIONS" => {
                     for col in gain.column_iter() {
-                        let (shape, rbm) = col.as_slice().split_at(n_nodes);
+                        let (shape, others) = col.as_slice().split_at(n_nodes);
+                        let (_, rbm) = others.split_at(84);
                         let (t_xyz, r_xyz) = rbm.split_at(3);
 
                         let rxyz_surface = {
@@ -174,7 +179,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sid
             );
             let now = Instant::now();
-            let rbm_gain_svd = gain.rows(n_nodes, 6).svd(true, true);
+            let rbm_gain_svd = na::DMatrix::from_iterator(
+                42,
+                gain.ncols(),
+                gain.rows(n_nodes, 84).column_iter().flat_map(|col| {
+                    col.as_slice()
+                        .chunks(12)
+                        .flat_map(|x| {
+                            x[..6]
+                                .iter()
+                                .zip(&x[6..])
+                                .map(|(cell, mirror)| cell - mirror)
+                                .collect::<Vec<f64>>()
+                        })
+                        .collect::<Vec<f64>>()
+                }),
+            )
+            .svd(true, true);
+            //            let rbm_gain_svd = gain.rows(n_nodes + 84, 6).svd(true, true);
             println!("RBM Singular values:");
             let mut rbm_singular_values = rbm_gain_svd.singular_values.as_slice().to_owned();
             rbm_singular_values.sort_by(|a, b| b.partial_cmp(a).unwrap());
@@ -185,7 +207,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .map(|x| x / rbm_singular_values[0])
                     .collect::<Vec<f64>>()
             );
-            let v_rbm_t = rbm_gain_svd.v_t.as_ref().unwrap();
+            let v_rbm_t = rbm_gain_svd.v_t.as_ref().unwrap().rows(0, 6);
             println!(" ... in {}ms", now.elapsed().as_millis());
 
             println!(
@@ -396,6 +418,70 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 mod tests {
     use super::*;
     #[test]
+    fn m1_s1_hardpoints() {
+        let home = std::env::var("HOME").unwrap();
+        let fem_path = Path::new(&home);
+        let mut fem = FEM::from_pickle(fem_path.join("projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl")).unwrap();
+        println!("{}", fem);
+        let n_io = (fem.n_inputs(), fem.n_outputs());
+        let sid = 1;
+        fem.keep_inputs(&[sid - 1]);
+        fem.keep_outputs(&[sid, 24, 25]);
+        fem.filter_outputs_by(&[sid, 25], |x| {
+            x.descriptions.contains(&format!("M1-S{}", sid))
+        });
+        println!("{}", fem);
+
+        let nodes = fem.outputs[sid]
+            .as_ref()
+            .unwrap()
+            .get_by(|x| x.properties.location.as_ref().map(|x| x.to_vec()))
+            .into_iter()
+            .flatten()
+            .collect::<Vec<f64>>();
+        let n_nodes = nodes.len() / 3;
+
+        let gain = fem.reduced_static_gain(n_io).unwrap();
+        let surface_gain = gain.rows(0, n_nodes);
+        let hardpoints_gain = gain.rows(n_nodes, 84);
+        let rbm_gain = gain.rows(n_nodes + 84, 6);
+        let rbm_gain_svd = rbm_gain.svd(true, true);
+
+        let mut rbm = vec![0f64; 6];
+        rbm[3] = 1e-6;
+        let rbm = ((2f64 * na::DVector::new_random(6)
+            - na::DVector::from_column_slice(&vec![1f64; 6]))
+            * 1e-6)
+            .as_slice()
+            .to_owned();
+        let forces = rbm_gain_svd.v_t.as_ref().unwrap().transpose()
+            * na::DMatrix::from_diagonal(&rbm_gain_svd.singular_values.map(f64::recip))
+            * rbm_gain_svd.u.as_ref().unwrap().transpose()
+            * na::DVector::from_column_slice(&rbm);
+        let surface = surface_gain * forces;
+
+        let file = File::open("m1_eigen_modes.bin").unwrap();
+        let data: Vec<(Vec<f64>, Vec<f64>)> = bincode::deserialize_from(file).unwrap();
+        let (eigens, b2f) = &data[sid - 1];
+        let n_mode = eigens.len() / n_nodes;
+        let modes = na::DMatrix::from_column_slice(n_nodes, n_mode, eigens);
+        let b = modes.transpose() * &surface;
+        let surface_from_modes = modes * &b;
+
+        let forces_from_b = na::DMatrix::from_column_slice(rbm_gain.ncols(), n_mode, b2f) * b;
+        let rbm_from_filtered_forces = rbm_gain * &forces_from_b;
+        println!("Input/Output RBM:");
+        rbm.iter()
+            .zip(rbm_from_filtered_forces.as_slice().iter())
+            .for_each(|(i, o)| println!("{:7.3} / {:7.3}", i * 1e6, o * 1e6));
+
+        let hpd = hardpoints_gain * &forces_from_b;
+        println!(
+            "Hardpoints:\n{:#?}",
+            hpd.as_slice().iter().map(|x| x * 1e6).collect::<Vec<f64>>()
+        );
+    }
+    #[test]
     fn m1_s1_rbm() {
         let fem_path = Path::new("/home/ubuntu/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl");
         let mut fem = FEM::from_pickle(fem_path).unwrap();
@@ -546,8 +632,9 @@ mod tests {
 
     #[test]
     fn m1_s1_st_b2b_static() {
-        let fem_path = Path::new("/home/ubuntu/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl");
-        let mut fem = FEM::from_pickle(fem_path).unwrap();
+        let home = std::env::var("HOME").unwrap();
+        let fem_path = Path::new(&home);
+        let mut fem = FEM::from_pickle(fem_path.join("projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl")).unwrap();
         //    println!("{}", fem);
         let n_io = (fem.n_inputs(), fem.n_outputs());
         let sid = 1;
