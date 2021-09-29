@@ -660,8 +660,11 @@ FEM
  {:#?}
  - inputs:
  {:#?}
+ - 2x2 state space model: {}
 "##,
-            &self.u_tags, &self.y_tags,
+            &self.u_tags,
+            &self.y_tags,
+            self.state_space.len()
         )
     }
 }
