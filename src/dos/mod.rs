@@ -155,6 +155,13 @@ impl DiscreteStateSpace {
             ..self
         }
     }
+    /// Truncates the hankel singular values
+    pub fn truncate_hankel_singular_values(self, hankel_singular_values_threshold: f64) -> Self {
+        Self {
+            hankel_singular_values_threshold: Some(hankel_singular_values_threshold),
+            ..self
+        }
+    }
     /// Saves the eigen frequencies to a pickle data file
     pub fn dump_eigen_frequencies<P: AsRef<Path>>(self, path: P) -> Self {
         let mut file = File::create(path).unwrap();
@@ -655,16 +662,22 @@ impl fmt::Display for DiscreteModalSolver<Exponential> {
         write!(
             f,
             r##"
-FEM
+DiscreteModalSolver:
  - inputs:
  {:#?}
- - inputs:
+ - outputs:
  {:#?}
- - 2x2 state space model: {}
+ - {:} 2x2 state space models
 "##,
-            &self.u_tags,
-            &self.y_tags,
-            self.state_space.len()
+            self.u_tags
+                .iter()
+                .map(|t| t.kind())
+                .collect::<Vec<String>>(),
+            self.y_tags
+                .iter()
+                .map(|t| t.kind())
+                .collect::<Vec<String>>(),
+            self.state_space.len(),
         )
     }
 }
