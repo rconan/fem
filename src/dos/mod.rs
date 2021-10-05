@@ -494,6 +494,7 @@ pub struct DiscreteModalSolver<T> {
     pub state_space: Vec<T>,
 }
 impl<T> DiscreteModalSolver<T> {
+    /// Returns the model outputs filled with zeros
     pub fn zeroed_outputs(&self) -> Vec<IO<Vec<f64>>> {
         self.y_tags
             .iter()
@@ -501,6 +502,12 @@ impl<T> DiscreteModalSolver<T> {
             .map(|(t, &n)| (t, vec![0f64; n]).into())
             .collect()
     }
+    /*
+        /// Serializes the model using [bincode](https://docs.rs/bincode/1.3.3/bincode/)
+        fn dump(&self, filename: &str) -> REs {
+        let file = File::create(filename)
+        }
+    */
 }
 impl From<(SecondOrder, f64)> for DiscreteModalSolver<Exponential> {
     fn from((second_order, sampling_rate): (SecondOrder, f64)) -> Self {
