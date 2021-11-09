@@ -356,6 +356,39 @@ impl DiscreteStateSpace {
         let norm_x = |x: &[f64]| x.iter().map(|x| x * x).sum::<f64>().sqrt();
         0.25 * norm_x(b) * norm_x(c) / (w * z)
     }
+    /// Computes the Hankel singular values
+    pub fn hankel_singular_values(self) -> Result<Vec<f64>> {
+        let fem = self
+            .fem
+            .map_or(Err(StateSpaceError::MissingArguments("FEM".to_owned())), Ok)?;
+        let n_mode = fem.n_modes();
+        let forces_2_modes = na::DMatrix::from_row_slice(
+            n_mode,
+            fem.inputs_to_modal_forces.len() / n_mode,
+            &fem.inputs_to_modal_forces,
+        );
+        let modes_2_nodes = na::DMatrix::from_row_slice(
+            fem.modal_disp_to_outputs.len() / n_mode,
+            n_mode,
+            &fem.modal_disp_to_outputs,
+        );
+        let w = fem.eigen_frequencies_to_radians();
+        let zeta = match self.zeta {
+            Some(zeta) => {
+                log::info!("Proportional coefficients modified, new value: {:.4}", zeta);
+                vec![zeta; fem.n_modes()]
+            }
+            None => fem.proportional_damping_vec.clone(),
+        };
+        Ok((0..fem.n_modes())
+            .into_par_iter()
+            .map(|k| {
+                let b = forces_2_modes.row(k).clone_owned();
+                let c = modes_2_nodes.column(k);
+                Self::hankel_singular_value(w[k], zeta[k], b.as_slice(), c.as_slice())
+            })
+            .collect())
+    }
     /// Builds the state space discrete model
     pub fn build(self) -> Result<DiscreteModalSolver<Exponential>> {
         let tau = self.sampling.map_or(
