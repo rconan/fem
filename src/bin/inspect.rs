@@ -1,4 +1,4 @@
-use fem::{dos, FEM};
+use gmt_fem::{dos, FEM};
 use simple_logger::SimpleLogger;
 use std::path::Path;
 use structopt::StructOpt;

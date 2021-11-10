@@ -1,5 +1,5 @@
-use fem::FEM;
 use geotrans::{Quaternion, Vector};
+use gmt_fem::FEM;
 use na::DMatrixSlice;
 use nalgebra as na;
 use spade::{delaunay::FloatDelaunayTriangulation, HasPosition};
