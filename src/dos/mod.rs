@@ -95,7 +95,7 @@ impl std::error::Error for StateSpaceError {
 type Result<T> = std::result::Result<T, StateSpaceError>;
 type StateSpaceIO = Vec<IO<Vec<f64>>>;
 
-fem_proc::match_maker! {}
+fem_macros::match_maker! {}
 
 /// This structure is the state space model builder based on a builder pattern design
 #[derive(Default)]

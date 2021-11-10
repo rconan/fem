@@ -4,16 +4,13 @@ version = "0.1.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2018"
 
-[workspace]
-members = ["fem-proc"]
-
 [dependencies]
 num-complex = { version = "0.4.0", optional = true }
 serde = { version = "1.0.119", features = ["derive"] }
 serde-pickle = "0.6.2"
 simple_logger = "1.11.0"
 structopt = "0.3.21"
-fem-proc = { path = "fem-proc" }
+fem-macros = { path = "fem-macros" }
 nalgebra = { version = "0.29.0" , features = ["rand"] }
 env_logger = "0.9.0"
 log = "0.4.14"
