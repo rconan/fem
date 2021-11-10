@@ -8,6 +8,6 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-hdf5 = { git = "https://github.com/aldanor/hdf5-rust.git" , branch= "master" }
+hdf5 = "0.8.0"
 proc-macro2 = "1.0.28"
 quote = "1.0.9"
