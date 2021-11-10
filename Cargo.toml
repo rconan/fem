@@ -1,5 +1,5 @@
 [package]
-name = "fem"
+name = "gmt-fem"
 version = "0.1.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2018"
