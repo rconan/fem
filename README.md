@@ -1,2 +1,2 @@
 # fem
-Finite Element Model 
+Finite Element Model for the Giant Magellan Telescope
