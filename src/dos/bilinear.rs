@@ -11,8 +11,8 @@ pub struct Bilinear {
     pub y: Vec<f64>,
     x: (f64, f64),
 }
-impl Bilinear {
-    pub fn from_second_order(
+impl super::Solver for Bilinear {
+    fn from_second_order(
         tau: f64,
         omega: f64,
         zeta: f64,
@@ -36,7 +36,7 @@ impl Bilinear {
             x: (0f64, 0f64),
         }
     }
-    pub fn solve(&mut self, u: &[f64]) -> &[f64] {
+    fn solve(&mut self, u: &[f64]) -> &[f64] {
         let (x0, x1) = self.x;
         let s = self.m.0 * x0 + self.m.1 * x1;
         self.y.iter_mut().zip(self.c.iter()).for_each(|(y, c)| {
