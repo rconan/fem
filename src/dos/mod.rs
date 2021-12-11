@@ -58,6 +58,20 @@ pub use exponential::Exponential;
 pub mod second_order;
 #[doc(inline)]
 pub use second_order::SecondOrder;
+pub mod exponential_matrix;
+#[doc(inline)]
+pub use exponential_matrix::ExponentialMatrix;
+
+pub trait Solver {
+    fn from_second_order(
+        tau: f64,
+        omega: f64,
+        zeta: f64,
+        continuous_bb: Vec<f64>,
+        continuous_cc: Vec<f64>,
+    ) -> Self;
+    fn solve(&mut self, u: &[f64]) -> &[f64];
+}
 
 #[derive(Debug)]
 pub enum StateSpaceError {
@@ -390,7 +404,7 @@ impl DiscreteStateSpace {
             .collect())
     }
     /// Builds the state space discrete model
-    pub fn build(self) -> Result<DiscreteModalSolver<Exponential>> {
+    pub fn build<T: Solver>(self) -> Result<DiscreteModalSolver<T>> {
         let tau = self.sampling.map_or(
             Err(StateSpaceError::MissingArguments("sampling".to_owned())),
             |x| Ok(1f64 / x),
@@ -474,7 +488,7 @@ impl DiscreteStateSpace {
                     let hsv =
                         Self::hankel_singular_value(w[k], zeta[k], b.as_slice(), c.as_slice());
                     if hsv > hsv_t {
-                        Some(Exponential::from_second_order(
+                        Some(T::from_second_order(
                             tau,
                             w[k],
                             zeta[k],
@@ -490,7 +504,7 @@ impl DiscreteStateSpace {
                 .map(|k| {
                     let b = forces_2_modes.row(k).clone_owned();
                     let c = modes_2_nodes.column(k);
-                    Exponential::from_second_order(
+                    T::from_second_order(
                         tau,
                         w[k],
                         zeta[k],
@@ -515,7 +529,7 @@ impl DiscreteStateSpace {
 ///
 /// The state space discrete model is made of several discrete 2nd order different equation solvers, all independent and solved concurrently
 #[derive(Debug, Default)]
-pub struct DiscreteModalSolver<T> {
+pub struct DiscreteModalSolver<T: Solver> {
     /// Model input vector
     pub u: Vec<f64>,
     u_tags: Vec<Tags>,
@@ -526,7 +540,7 @@ pub struct DiscreteModalSolver<T> {
     /// vector of state models
     pub state_space: Vec<T>,
 }
-impl<T> DiscreteModalSolver<T> {
+impl<T: Solver> DiscreteModalSolver<T> {
     /// Returns the model outputs filled with zeros
     pub fn zeroed_outputs(&self) -> Vec<IO<Vec<f64>>> {
         self.y_tags
@@ -542,7 +556,7 @@ impl<T> DiscreteModalSolver<T> {
         }
     */
 }
-impl From<(SecondOrder, f64)> for DiscreteModalSolver<Exponential> {
+impl<T: Solver> From<(SecondOrder, f64)> for DiscreteModalSolver<T> {
     fn from((second_order, sampling_rate): (SecondOrder, f64)) -> Self {
         let n_in = second_order.n_u();
         let n_out = second_order.n_y();
@@ -555,7 +569,7 @@ impl From<(SecondOrder, f64)> for DiscreteModalSolver<Exponential> {
                 let b_row = b.row(k).clone_owned();
                 let c_col = c.column(k);
                 let w = second_order.omega[k] * 2. * std::f64::consts::PI;
-                Exponential::from_second_order(
+                T::from_second_order(
                     tau,
                     w,
                     second_order.zeta[k],
@@ -574,7 +588,7 @@ impl From<(SecondOrder, f64)> for DiscreteModalSolver<Exponential> {
         }
     }
 }
-impl From<(SecondOrder, f64, (usize, usize))> for DiscreteModalSolver<Exponential> {
+impl<T: Solver> From<(SecondOrder, f64, (usize, usize))> for DiscreteModalSolver<T> {
     fn from(
         (second_order, sampling_rate, (skip, take)): (SecondOrder, f64, (usize, usize)),
     ) -> Self {
@@ -591,7 +605,7 @@ impl From<(SecondOrder, f64, (usize, usize))> for DiscreteModalSolver<Exponentia
                 let b_row = b.row(k).clone_owned();
                 let c_col = c.column(k);
                 let w = second_order.omega[k] * 2. * std::f64::consts::PI;
-                Exponential::from_second_order(
+                T::from_second_order(
                     tau,
                     w,
                     second_order.zeta[k],
@@ -640,8 +654,38 @@ impl Iterator for DiscreteModalSolver<Exponential> {
         Some(())
     }
 }
+impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> {
+        let n = self.y.len();
+        //        match &self.u {
+        let _u_ = &self.u;
+        self.y = self
+            .state_space
+            .par_iter_mut()
+            .fold(
+                || vec![0f64; n],
+                |mut a: Vec<f64>, m| {
+                    a.iter_mut().zip(m.solve(_u_)).for_each(|(yc, y)| {
+                        *yc += y;
+                    });
+                    a
+                },
+            )
+            .reduce(
+                || vec![0f64; n],
+                |mut a: Vec<f64>, b: Vec<f64>| {
+                    a.iter_mut().zip(b.iter()).for_each(|(a, b)| {
+                        *a += *b;
+                    });
+                    a
+                },
+            );
+        Some(())
+    }
+}
 
-impl Dos for DiscreteModalSolver<Exponential> {
+impl<T: Solver> Dos for DiscreteModalSolver<T> {
     type Input = Vec<f64>;
     type Output = Vec<f64>;
     fn inputs(
@@ -689,7 +733,7 @@ impl Dos for DiscreteModalSolver<Exponential> {
             .collect()
     }
 }
-impl IOTags for DiscreteModalSolver<Exponential> {
+impl<T: Solver> IOTags for DiscreteModalSolver<T> {
     fn outputs_tags(&self) -> Vec<Tags> {
         self.y_tags.clone()
     }
@@ -697,7 +741,7 @@ impl IOTags for DiscreteModalSolver<Exponential> {
         self.u_tags.clone()
     }
 }
-impl fmt::Display for DiscreteModalSolver<Exponential> {
+impl<T: Solver> fmt::Display for DiscreteModalSolver<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,

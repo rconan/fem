@@ -82,10 +82,18 @@ pub struct Exponential {
     x: (f64, f64),
 }
 impl Exponential {
+    pub fn n_inputs(&self) -> usize {
+        self.b.len()
+    }
+    pub fn n_outputs(&self) -> usize {
+        self.c.len()
+    }
+}
+impl super::Solver for Exponential {
     /// Creates a discrete state space model from a 2nd order ODE
     ///
     /// Creates a new structure from the sampling time $`\tau`$, the eigen frequency $`\omega`$ in radians, the damping coefficient $`\zeta`$ and the vectors $`b`$ and $`c`$ that converts a input vector to a modal coefficient and a model coefficient to an output vector, respectively
-    pub fn from_second_order(
+    fn from_second_order(
         tau: f64,
         omega: f64,
         zeta: f64,
@@ -127,14 +135,8 @@ impl Exponential {
             x: (0f64, 0f64),
         }
     }
-    pub fn n_inputs(&self) -> usize {
-        self.b.len()
-    }
-    pub fn n_outputs(&self) -> usize {
-        self.c.len()
-    }
     /// Returns the state space model output
-    pub fn solve(&mut self, u: &[f64]) -> &[f64] {
+    fn solve(&mut self, u: &[f64]) -> &[f64] {
         let (x0, x1) = self.x;
         //let s = self.m.0 * x0 + self.m.1 * x1;
         self.y.iter_mut().zip(self.c.iter()).for_each(|(y, c)| {
@@ -150,7 +152,7 @@ impl fmt::Display for Exponential {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "2x2 discrete state space model: {}->{} ({:.3}Hz)\n - A: {:.6?}\n - B: {:.6?}",
+            "2x2 discrete state space model: {}->{} ({:.3}Hz)\n - A: {:.9?}\n - B: {:.9?}",
             self.b.len(),
             self.c.len(),
             self.tau.recip(),

@@ -6,7 +6,7 @@ edition = "2018"
 license = "MIT"
 description = "Giant Magellan Telescope Finite Element Model"
 repository = "https://github.com/rconan/fem"
-documentation = "https://docs.rs/fem"
+documentation = "https://docs.rs/gmt-fem"
 readme = "README.md"
 categories = ["science", "simulation"]
 keywords = ["telescope", "astronomy"]
@@ -27,7 +27,7 @@ bincode = "1.3.3"
 triangle-rs = "0.1.0"
 geotrans = "0.1.0"
 complot = { version = "0.3.1", features = ["png"] }
-dosio = { version = "0.1.2", optional = true }
+dosio = {  version = "0.1.2", optional = true }
 
 [features]
 dos = ["dosio", "num-complex"]
