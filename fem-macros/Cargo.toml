@@ -15,6 +15,6 @@ keywords = ["telescope", "astronomy"]
 proc-macro = true
 
 [dependencies]
-hdf5 = "0.8.0"
+hdf5 = "^0.8"
 proc-macro2 = "1.0.28"
 quote = "1.0.9"
