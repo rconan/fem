@@ -22,11 +22,8 @@ nalgebra = { version = "0.29.0" , features = ["rand"] }
 env_logger = "0.9.0"
 log = "0.4.14"
 rayon = "1.5.1"
-spade = "1.8.2"
 bincode = "1.3.3"
-triangle-rs = "0.1.0"
 geotrans = "0.1.0"
-complot = { version = "0.3.1", features = ["png"] }
 dosio = {  version = "0.1.2", optional = true }
 
 [features]
@@ -39,6 +36,13 @@ rstar = "0.8.2"
 rayon = "1.5.0"
 rustfft = "5.0.1"
 csv = "1.1.5"
+spade = "1.8.2"
+triangle-rs = "0.1.2"
+complot = { version = "0.3.1", features = ["png"] }
+zip = "0.5.13"
+anyhow = "1.0.51"
+parquet = "6.3.0"
+arrow = "6.3.0"
 
 #[profile.release]
 #debug = true
