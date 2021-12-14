@@ -1,0 +1,20 @@
+[package]
+name = "fem-macros"
+version = "0.1.0"
+authors = ["Rod Conan <rconan@gmto.org>"]
+edition = "2018"
+license = "MIT"
+description = "Procedural macros to build the Giant Magellan Telescope FEM inputs/outputs"
+repository = "https://github.com/rconan/fem"
+documentation = "https://docs.rs/fem-macros"
+readme = "README.md"
+categories = ["science", "simulation"]
+keywords = ["telescope", "astronomy"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+hdf5 = "0.8.0"
+proc-macro2 = "1.0.28"
+quote = "1.0.9"

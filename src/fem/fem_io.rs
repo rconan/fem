@@ -2,4 +2,4 @@ use super::{IOData, IO};
 use serde;
 use serde::Deserialize;
 
-fem_proc::ad_hoc! {}
+fem_macros::ad_hoc! {}

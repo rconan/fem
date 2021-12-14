@@ -1,29 +1,30 @@
 [package]
-name = "fem"
+name = "gmt-fem"
 version = "0.1.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2018"
-
-[workspace]
-members = ["fem-proc"]
+license = "MIT"
+description = "Giant Magellan Telescope Finite Element Model"
+repository = "https://github.com/rconan/fem"
+documentation = "https://docs.rs/gmt-fem"
+readme = "README.md"
+categories = ["science", "simulation"]
+keywords = ["telescope", "astronomy"]
 
 [dependencies]
-triangle-rs = { git = "https://github.com/rconan/triangle-rs.git", branch = "main" }
 num-complex = { version = "0.4.0", optional = true }
 serde = { version = "1.0.119", features = ["derive"] }
 serde-pickle = "0.6.2"
 simple_logger = "1.11.0"
 structopt = "0.3.21"
-fem-proc = { path = "fem-proc" }
-dosio = { git = "https://github.com/rconan/dosio.git", branch = "ns-opm-im", optional = true }
+fem-macros = { path = "fem-macros", version = "^0.1"}
 nalgebra = { version = "0.29.0" , features = ["rand"] }
-geotrans = { git = "https://github.com/rconan/geotrans.git", branch = "main" }
 env_logger = "0.9.0"
 log = "0.4.14"
 rayon = "1.5.1"
-spade = "1.8.2"
 bincode = "1.3.3"
-complot = "0.3.0"
+geotrans = "0.1.0"
+dosio = {  version = "0.1.2", optional = true }
 
 [features]
 dos = ["dosio", "num-complex"]
@@ -35,6 +36,13 @@ rstar = "0.8.2"
 rayon = "1.5.0"
 rustfft = "5.0.1"
 csv = "1.1.5"
+spade = "1.8.2"
+triangle-rs = "0.1.2"
+complot = { version = "0.3.1", features = ["png"] }
+zip = "0.5.13"
+anyhow = "1.0.51"
+parquet = "6.3.0"
+arrow = "6.3.0"
 
 #[profile.release]
 #debug = true

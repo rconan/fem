@@ -1,5 +1,5 @@
-use fem::FEM;
 use geotrans::{Quaternion, Vector};
+use gmt_fem::FEM;
 use na::DMatrixSlice;
 use nalgebra as na;
 use spade::{delaunay::FloatDelaunayTriangulation, HasPosition};
@@ -24,8 +24,8 @@ impl HasPosition for DataPoint {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    let n = 101; // sampling
-    let width = 8.4; // segment map width
+    let n = 201; // sampling
+    let width = 8.5; // segment map width
 
     let home = std::env::var("HOME")?;
     let fem_path = Path::new(&home);
@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let now = Instant::now();
             let mut fem = FEM::from_pickle(fem_path.join(
         "projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl",
-    ))?;
+    )).unwrap();
             //    println!("{}", fem);
             let n_io = (fem.n_inputs(), fem.n_outputs());
             fem.keep_inputs(&[sid - 1]);
@@ -375,6 +375,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("Step #7: Writing gridded eigen modes to ceo file ");
             let now = Instant::now();
             let n_mode_max = n_mode.iter().cloned().fold(0, usize::max);
+            println!("n mode max: {}", n_mode_max);
             let n_max = n_mode_max * n * n;
             let u = modes.into_iter().flat_map(|u| {
                 let n_u = u.len();

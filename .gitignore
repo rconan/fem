@@ -5,3 +5,9 @@ Cargo.lock
 *.png
 *.svg
 *~
+examples/M1_FEM
+*.json
+*.bin
+*.ceo
+*.data*
+*.ipynb
