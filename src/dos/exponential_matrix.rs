@@ -100,13 +100,13 @@ impl super::Solver for ExponentialMatrix {
             Matrix3::from_columns(&[
                 Vector3::new(Complex { re: 1., im: 0. }, Z_CPLX, Z_CPLX),
                 Vector3::new(
-                    Complex { re: 1., im: 0. },
+                    Complex { re: tau, im: 0. },
                     Complex { re: 1., im: 0. },
                     Z_CPLX,
                 ),
                 Vector3::new(
-                    Complex { re: 0.5, im: 0. },
-                    Complex { re: 1., im: 0. },
+                    Complex { re: 0.5*tau*tau, im: 0. },
+                    Complex { re: tau, im: 0. },
                     Complex { re: 1., im: 0. },
                 ),
             ])
