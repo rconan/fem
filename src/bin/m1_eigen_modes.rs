@@ -467,6 +467,10 @@ mod tests {
         let modes = na::DMatrix::from_column_slice(n_nodes, n_mode, eigens);
         let b = modes.transpose() * &surface;
         let surface_from_modes = modes * &b;
+        println!("Input/Output RBM:");
+        rbm.iter()
+            .zip(b.as_slice().iter())
+            .for_each(|(i, o)| println!("{:7.3} / {:7.3}", i * 1e6, o * 1e6));
 
         let forces_from_b = na::DMatrix::from_column_slice(rbm_gain.ncols(), n_mode, b2f) * b;
         let rbm_from_filtered_forces = rbm_gain * &forces_from_b;
@@ -477,8 +481,18 @@ mod tests {
 
         let hpd = hardpoints_gain * &forces_from_b;
         println!(
-            "Hardpoints:\n{:#?}",
-            hpd.as_slice().iter().map(|x| x * 1e6).collect::<Vec<f64>>()
+            "Hardpoints [x10^6:\n{:#?}",
+            hpd.as_slice()
+                .chunks(12)
+                .flat_map(|x| {
+                    x[..6]
+                        .iter()
+                        .zip(&x[6..])
+                        .map(|(cell, mirror)| cell - mirror)
+                        .collect::<Vec<f64>>()
+                })
+                .map(|x| x * 1e6)
+                .collect::<Vec<f64>>()
         );
     }
     #[test]
