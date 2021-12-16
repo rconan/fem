@@ -47,7 +47,7 @@ use log;
 use nalgebra as na;
 use rayon::prelude::*;
 use serde_pickle as pickle;
-use std::{fmt, fs::File, path::Path};
+use std::{fmt, fs::File, marker::PhantomData, path::Path};
 
 pub mod bilinear;
 #[doc(inline)]
@@ -113,7 +113,7 @@ fem_macros::match_maker! {}
 
 /// This structure is the state space model builder based on a builder pattern design
 #[derive(Default)]
-pub struct DiscreteStateSpace {
+pub struct DiscreteStateSpace<T: Solver + Default> {
     sampling: Option<f64>,
     fem: Option<Box<fem::FEM>>,
     u: Option<StateSpaceIO>,
@@ -122,8 +122,9 @@ pub struct DiscreteStateSpace {
     eigen_frequencies: Option<Vec<(usize, f64)>>,
     max_eigen_frequency: Option<f64>,
     hankel_singular_values_threshold: Option<f64>,
+    phantom: PhantomData<T>,
 }
-impl From<fem::FEM> for DiscreteStateSpace {
+impl<T: Solver + Default> From<fem::FEM> for DiscreteStateSpace<T> {
     /// Creates a state space model builder from a FEM structure
     fn from(fem: fem::FEM) -> Self {
         Self {
@@ -132,7 +133,7 @@ impl From<fem::FEM> for DiscreteStateSpace {
         }
     }
 }
-impl DiscreteStateSpace {
+impl<T: Solver + Default> DiscreteStateSpace<T> {
     /// Set the sampling rate on Hz of the discrete state space model
     pub fn sampling(self, sampling: f64) -> Self {
         Self {
@@ -404,7 +405,7 @@ impl DiscreteStateSpace {
             .collect())
     }
     /// Builds the state space discrete model
-    pub fn build<T: Solver>(self) -> Result<DiscreteModalSolver<T>> {
+    pub fn build(self) -> Result<DiscreteModalSolver<T>> {
         let tau = self.sampling.map_or(
             Err(StateSpaceError::MissingArguments("sampling".to_owned())),
             |x| Ok(1f64 / x),
@@ -529,7 +530,7 @@ impl DiscreteStateSpace {
 ///
 /// The state space discrete model is made of several discrete 2nd order different equation solvers, all independent and solved concurrently
 #[derive(Debug, Default)]
-pub struct DiscreteModalSolver<T: Solver> {
+pub struct DiscreteModalSolver<T: Solver + Default> {
     /// Model input vector
     pub u: Vec<f64>,
     u_tags: Vec<Tags>,
@@ -540,7 +541,7 @@ pub struct DiscreteModalSolver<T: Solver> {
     /// vector of state models
     pub state_space: Vec<T>,
 }
-impl<T: Solver> DiscreteModalSolver<T> {
+impl<T: Solver + Default> DiscreteModalSolver<T> {
     /// Returns the model outputs filled with zeros
     pub fn zeroed_outputs(&self) -> Vec<IO<Vec<f64>>> {
         self.y_tags
@@ -550,13 +551,17 @@ impl<T: Solver> DiscreteModalSolver<T> {
             .collect()
     }
     /*
-        /// Serializes the model using [bincode](https://docs.rs/bincode/1.3.3/bincode/)
-        fn dump(&self, filename: &str) -> REs {
-        let file = File::create(filename)
-        }
+      /// Serializes the model using [bincode](https://docs.rs/bincode/1.3.3/bincode/)
+      fn dump(&self, filename: &str) -> REs {
+      let file = File::create(filename)
+      }
     */
+    /// Returns the FEM state space builer
+    pub fn from_fem(fem: fem::FEM) -> DiscreteStateSpace<T> {
+        fem.into()
+    }
 }
-impl<T: Solver> From<(SecondOrder, f64)> for DiscreteModalSolver<T> {
+impl<T: Solver + Default> From<(SecondOrder, f64)> for DiscreteModalSolver<T> {
     fn from((second_order, sampling_rate): (SecondOrder, f64)) -> Self {
         let n_in = second_order.n_u();
         let n_out = second_order.n_y();
@@ -588,7 +593,7 @@ impl<T: Solver> From<(SecondOrder, f64)> for DiscreteModalSolver<T> {
         }
     }
 }
-impl<T: Solver> From<(SecondOrder, f64, (usize, usize))> for DiscreteModalSolver<T> {
+impl<T: Solver + Default> From<(SecondOrder, f64, (usize, usize))> for DiscreteModalSolver<T> {
     fn from(
         (second_order, sampling_rate, (skip, take)): (SecondOrder, f64, (usize, usize)),
     ) -> Self {
@@ -685,7 +690,7 @@ impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
     }
 }
 
-impl<T: Solver> Dos for DiscreteModalSolver<T> {
+impl<T: Solver + Default> Dos for DiscreteModalSolver<T> {
     type Input = Vec<f64>;
     type Output = Vec<f64>;
     fn inputs(
@@ -733,7 +738,7 @@ impl<T: Solver> Dos for DiscreteModalSolver<T> {
             .collect()
     }
 }
-impl<T: Solver> IOTags for DiscreteModalSolver<T> {
+impl<T: Solver + Default> IOTags for DiscreteModalSolver<T> {
     fn outputs_tags(&self) -> Vec<Tags> {
         self.y_tags.clone()
     }
@@ -741,7 +746,7 @@ impl<T: Solver> IOTags for DiscreteModalSolver<T> {
         self.u_tags.clone()
     }
 }
-impl<T: Solver> fmt::Display for DiscreteModalSolver<T> {
+impl<T: Solver + Default> fmt::Display for DiscreteModalSolver<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
