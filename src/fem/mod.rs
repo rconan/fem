@@ -61,13 +61,13 @@ pub struct FEM {
     pub inputs: Vec<Option<fem_io::Inputs>>,
     /// outputs properties
     pub outputs: Vec<Option<fem_io::Outputs>>,
-    /// mode shapes eigen frequencies \[Hz\]
+    /// mode shapes eigen frequencies `[Hz]`
     #[serde(rename = "eigenfrequencies")]
     pub eigen_frequencies: Vec<f64>,
-    /// inputs forces to modal forces matrix [n_modes,n_inputs] (row wise)
+    /// inputs forces to modal forces matrix `[n_modes,n_inputs]` (row wise)
     #[serde(rename = "inputs2ModalF")]
     pub inputs_to_modal_forces: Vec<f64>,
-    /// mode shapes to outputs nodes [n_outputs,n_modes] (row wise)
+    /// mode shapes to outputs nodes `[n_outputs,n_modes]` (row wise)
     #[serde(rename = "modalDisp2Outputs")]
     pub modal_disp_to_outputs: Vec<f64>,
     /// mode shapes damping coefficients
@@ -161,6 +161,23 @@ impl FEM {
             if !id.contains(&k) {
                 *i = None
             } else {
+                if let Some(i) = i.as_mut() {
+                    i.iter_mut().for_each(|io| {
+                        *io = io.clone().switch_off();
+                        *io = io.clone().switch_on_by(pred);
+                    })
+                }
+            }
+        });
+        self
+    }
+    /// Filters the outputs according to some properties matching
+    pub fn filter_inputs_by<F>(&mut self, id: &[usize], pred: F) -> &mut Self
+    where
+        F: Fn(&IOData) -> bool + Copy,
+    {
+        self.inputs.iter_mut().enumerate().for_each(|(k, i)| {
+            if id.contains(&k) {
                 if let Some(i) = i.as_mut() {
                     i.iter_mut().for_each(|io| {
                         *io = io.clone().switch_off();

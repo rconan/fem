@@ -134,6 +134,15 @@ impl<T: Solver + Default> From<fem::FEM> for DiscreteStateSpace<T> {
     }
 }
 impl<T: Solver + Default> DiscreteStateSpace<T> {
+    /// Prints information about the FEM
+    pub fn fem_info(self) -> Self {
+        if let Some(fem) = self.fem.as_ref() {
+            println!("{}", fem);
+        } else {
+            println!("FEM missing!");
+        }
+        self
+    }
     /// Set the sampling rate on Hz of the discrete state space model
     pub fn sampling(self, sampling: f64) -> Self {
         Self {
