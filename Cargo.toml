@@ -24,10 +24,7 @@ log = "0.4.14"
 rayon = "1.5.1"
 bincode = "1.3.3"
 geotrans = "0.1.0"
-dosio = {  version = "0.1.2", default-features = false, optional = true }
-
-[patch.crates-io]
-dosio = { path = "../dosio" }
+dosio = {  version = "0.1.3", default-features = false, optional = true }
 
 [features]
 default = ["fem-macros/hdf5"]

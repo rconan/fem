@@ -4,5 +4,5 @@ pub mod io;
 pub mod fem;
 pub use fem::{fem_io, FEM};
 
-#[cfg(feature = "dos")]
+#[cfg(any(feature = "dos", feature = "dos-prqt"))]
 pub mod dos;
