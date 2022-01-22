@@ -545,7 +545,7 @@ pub struct DiscreteModalSolver<T: Solver + Default> {
     u_tags: Vec<Tags>,
     /// Model output vector
     pub y: Vec<f64>,
-    y_sizes: Vec<usize>,
+    pub y_sizes: Vec<usize>,
     y_tags: Vec<Tags>,
     /// vector of state models
     pub state_space: Vec<T>,
