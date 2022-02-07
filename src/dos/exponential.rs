@@ -109,7 +109,10 @@ impl super::Solver for Exponential {
         let m = (iqm * tau.sqrt()).as_slice().to_owned();
         */
         let i = Matrix2::<f64>::identity();
-        let x = Complex { re: omega, im: 0. };
+        let x = Complex {
+            re: if omega == 0f64 { 1e-6 } else { omega },
+            im: 0.,
+        };
         let y = Complex { re: zeta, im: 0. };
         let ia = Matrix2::new((-2. * y / x).re, -1. / (x * x).re, 1., 0.);
         let z = (x * x * (y * y - 1.)).sqrt();

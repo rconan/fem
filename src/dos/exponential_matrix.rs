@@ -105,7 +105,10 @@ impl super::Solver for ExponentialMatrix {
                     Z_CPLX,
                 ),
                 Vector3::new(
-                    Complex { re: 0.5*tau*tau, im: 0. },
+                    Complex {
+                        re: 0.5 * tau * tau,
+                        im: 0.,
+                    },
                     Complex { re: tau, im: 0. },
                     Complex { re: 1., im: 0. },
                 ),
