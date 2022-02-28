@@ -115,6 +115,19 @@ impl FEM {
             .filter_map(|x| x.as_ref())
             .fold(0usize, |a, x| a + x.len())
     }
+
+    /// Loads FEM static solution gain matrix from a pickle file "static_reduction_model.73.pkl" located in a directory given by the `FEM_REPO` environment variable
+    pub fn static_from_env(self) -> Self {
+        let fem_repo = env::var("FEM_REPO").unwrap();
+        println!("Loading static gain matrix from static_reduction_model.73.pkl...");
+        let fem_static = Self::from_pickle(Path::new(&fem_repo)
+            .join("static_reduction_model.73.pkl"))
+            .unwrap();
+        Self {
+            static_gain : fem_static.static_gain, ..self
+        }
+    }
+
     /// Selects the inputs according to their natural ordering
     pub fn keep_inputs(&mut self, id: &[usize]) -> &mut Self {
         self.inputs.iter_mut().enumerate().for_each(|(k, i)| {
