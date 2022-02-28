@@ -122,6 +122,7 @@ pub struct DiscreteStateSpace<T: Solver + Default> {
     eigen_frequencies: Option<Vec<(usize, f64)>>,
     max_eigen_frequency: Option<f64>,
     hankel_singular_values_threshold: Option<f64>,
+    n_io: Option<(usize, usize)>,
     phantom: PhantomData<T>,
 }
 impl<T: Solver + Default> From<fem::FEM> for DiscreteStateSpace<T> {
@@ -154,6 +155,13 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
     pub fn proportional_damping(self, zeta: f64) -> Self {
         Self {
             zeta: Some(zeta),
+            ..self
+        }
+    }
+    ///
+    pub fn with_static_g_comp(self, n_io:(usize, usize)) -> Self {
+        Self {
+            n_io: Some(n_io),
             ..self
         }
     }
@@ -488,7 +496,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 log::info!("Proportional coefficients modified, new value: {:.4}", zeta);
                 vec![zeta; n_modes]
             }
-            None => fem.proportional_damping_vec,
+            None => fem.proportional_damping_vec.clone(),
         };
         let state_space: Vec<_> = match self.hankel_singular_values_threshold {
             Some(hsv_t) => (0..n_modes)
@@ -524,6 +532,13 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 })
                 .collect(),
         };
+
+        let psi_dcg = if let Some(n_io) = self.n_io {
+            Some(fem.reduced_static_gain(n_io).unwrap() - fem.static_gain())
+        } else {
+            None
+        };
+        
         Ok(DiscreteModalSolver {
             u: vec![0f64; forces_2_modes.ncols()],
             u_tags: dos_inputs,
@@ -531,6 +546,8 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             y_tags: dos_outputs,
             y_sizes: sizes,
             state_space,
+            psi_dcg,
+            psi_times_u: vec![0f64; modes_2_nodes.nrows()],
         })
     }
 }
@@ -549,6 +566,10 @@ pub struct DiscreteModalSolver<T: Solver + Default> {
     y_tags: Vec<Tags>,
     /// vector of state models
     pub state_space: Vec<T>,
+    /// Static gain correction matrix
+    psi_dcg: Option<na::DMatrix<f64>>,
+    /// Static gain correction vector
+    psi_times_u: Vec<f64>,
 }
 impl<T: Solver + Default> DiscreteModalSolver<T> {
     /// Returns the model outputs filled with zeros
@@ -599,6 +620,8 @@ impl<T: Solver + Default> From<(SecondOrder, f64)> for DiscreteModalSolver<T> {
             y_tags: second_order.y.name,
             y_sizes: second_order.y.size,
             state_space,
+            psi_dcg: None,
+            psi_times_u: vec![0f64; n_out],
         }
     }
 }
@@ -635,6 +658,8 @@ impl<T: Solver + Default> From<(SecondOrder, f64, (usize, usize))> for DiscreteM
             y_tags: second_order.y.name,
             y_sizes: second_order.y.size,
             state_space,
+            psi_dcg: None,
+            psi_times_u: vec![0f64; n_out],
         }
     }
 }
@@ -673,7 +698,7 @@ impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
     fn next(&mut self) -> Option<Self::Item> {
         let n = self.y.len();
         //        match &self.u {
-        let _u_ = &self.u;
+        let _u_ = &self.u;        
         self.y = self
             .state_space
             .par_iter_mut()
@@ -695,6 +720,18 @@ impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
                     a
                 },
             );
+
+        if let Some(psi_dcg) = &self.psi_dcg {
+            self.y.iter_mut()
+                .zip(self.psi_times_u.iter_mut())
+                .map(|(v1, v2)| *v1 + *v2)
+                .collect::<Vec<f64>>();
+
+            let u_nalgebra = na::DVector::from_column_slice(&self.u);
+            self.psi_times_u = (psi_dcg * u_nalgebra)
+                .as_slice().to_vec();
+        }
+        
         Some(())
     }
 }
