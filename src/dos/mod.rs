@@ -37,7 +37,7 @@
 //! }
 //! ```
 
-use crate::fem;
+use crate::{fem, fem_io};
 use core::fmt::Debug;
 use dosio::{
     io::{IOError, Tags},
@@ -45,9 +45,17 @@ use dosio::{
 };
 use log;
 use nalgebra as na;
+use nalgebra::DMatrix;
 use rayon::prelude::*;
 use serde_pickle as pickle;
-use std::{fmt, fs::File, marker::PhantomData, path::Path};
+use std::{
+    any::{type_name, Any},
+    fmt,
+    fs::File,
+    marker::PhantomData,
+    ops::Range,
+    path::Path,
+};
 
 pub mod bilinear;
 #[doc(inline)]
@@ -80,6 +88,7 @@ pub enum StateSpaceError {
     MissingArguments(String),
     SamplingFrequency,
     MissingIO(IOError<Vec<f64>>),
+    Matrix(String),
 }
 impl fmt::Display for StateSpaceError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -89,6 +98,7 @@ impl fmt::Display for StateSpaceError {
             Self::MissingArguments(v) => write!(f, "argument {:?} is missing", v),
             Self::SamplingFrequency => f.write_str("sampling frequency not set"),
             Self::MissingIO(_) => f.write_str("DOS IO not found"),
+            Self::Matrix(msg) => write!(f, "{}", msg),
         }
     }
 }
@@ -111,6 +121,78 @@ type StateSpaceIO = Vec<IO<Vec<f64>>>;
 
 fem_macros::match_maker! {}
 
+pub struct SplitFem<U> {
+    range: Range<usize>,
+    io: PhantomData<U>,
+}
+
+impl<U> SplitFem<U> {
+    fn new() -> Self {
+        Self {
+            range: Range::default(),
+            io: PhantomData,
+        }
+    }
+}
+impl<U> Debug for SplitFem<U> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct(&format!("SplitFem<{}>", type_name::<U>()))
+            .field("range", &self.range)
+            .finish()
+    }
+}
+impl<U> Default for SplitFem<U> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+pub trait SetRange {
+    fn set_range(&mut self, start: usize, end: usize);
+}
+impl<U> SetRange for SplitFem<U> {
+    fn set_range(&mut self, start: usize, end: usize) {
+        self.range = Range { start, end };
+    }
+}
+pub trait GetIn: SetRange + Debug + Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+    fn get_in(&self, fem: &fem::FEM) -> Option<DMatrix<f64>>;
+}
+impl<U: 'static + Send + Sync> GetIn for SplitFem<U>
+where
+    Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn get_in(&self, fem: &fem::FEM) -> Option<DMatrix<f64>> {
+        fem.in2modes::<U>()
+            .as_ref()
+            .map(|x| DMatrix::from_row_slice(fem.n_modes(), x.len() / fem.n_modes(), x))
+    }
+}
+pub trait GetOut: SetRange + Debug + Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+    fn get_out(&self, fem: &fem::FEM) -> Option<DMatrix<f64>>;
+}
+impl<U: 'static + Send + Sync> GetOut for SplitFem<U>
+where
+    Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn get_out(&self, fem: &fem::FEM) -> Option<DMatrix<f64>> {
+        fem.modes2out::<U>()
+            .as_ref()
+            .map(|x| DMatrix::from_row_slice(x.len() / fem.n_modes(), fem.n_modes(), x))
+    }
+}
+
+pub trait Position {
+    const Idx: usize;
+}
+
 /// This structure is the state space model builder based on a builder pattern design
 #[derive(Default)]
 pub struct DiscreteStateSpace<T: Solver + Default> {
@@ -124,6 +206,8 @@ pub struct DiscreteStateSpace<T: Solver + Default> {
     hankel_singular_values_threshold: Option<f64>,
     n_io: Option<(usize, usize)>,
     phantom: PhantomData<T>,
+    ins: Vec<Box<dyn GetIn>>,
+    outs: Vec<Box<dyn GetOut>>,
 }
 impl<T: Solver + Default> From<fem::FEM> for DiscreteStateSpace<T> {
     /// Creates a state space model builder from a FEM structure
@@ -204,6 +288,24 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
         )
         .unwrap();
         self
+    }
+    pub fn ins<U>(self) -> Self
+    where
+        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
+        U: 'static + Send + Sync,
+    {
+        let mut ins = self.ins;
+        ins.push(Box::new(SplitFem::<U>::new()));
+        Self { ins, ..self }
+    }
+    pub fn outs<U>(self) -> Self
+    where
+        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+        U: 'static + Send + Sync,
+    {
+        let mut outs = self.outs;
+        outs.push(Box::new(SplitFem::<U>::new()));
+        Self { outs, ..self }
     }
     /// Sets the model inputs from a vector of [IO]
     pub fn inputs(self, v_u: Vec<Tags>) -> Self {
@@ -421,6 +523,155 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             })
             .collect())
     }
+    fn in2mode(&mut self, n_mode: usize) -> Option<DMatrix<f64>> {
+        if let Some(fem) = &self.fem {
+            let v: Vec<f64> = self
+                .ins
+                .iter_mut()
+                .scan(0usize, |s, x| {
+                    let mat = x.get_in(fem).unwrap();
+                    let l = mat.ncols();
+                    x.set_range(*s, *s + l);
+                    *s += l;
+                    Some(mat)
+                })
+                .flat_map(|x| {
+                    x.column_iter()
+                        .flat_map(|x| x.iter().take(n_mode).cloned().collect::<Vec<f64>>())
+                        .collect::<Vec<f64>>()
+                })
+                .collect();
+            Some(DMatrix::from_column_slice(n_mode, v.len() / n_mode, &v))
+        } else {
+            None
+        }
+    }
+    fn mode2out(&mut self, n_mode: usize) -> Option<DMatrix<f64>> {
+        if let Some(fem) = &self.fem {
+            let v: Vec<f64> = self
+                .outs
+                .iter_mut()
+                .scan(0usize, |s, x| {
+                    let mat = x.get_out(fem).unwrap();
+                    let l = mat.nrows();
+                    x.set_range(*s, *s + l);
+                    *s += l;
+                    Some(mat)
+                })
+                .flat_map(|x| {
+                    x.row_iter()
+                        .flat_map(|x| x.iter().take(n_mode).cloned().collect::<Vec<f64>>())
+                        .collect::<Vec<f64>>()
+                })
+                .collect();
+            Some(DMatrix::from_row_slice(v.len() / n_mode, n_mode, &v))
+        } else {
+            None
+        }
+    }
+    fn properties(&self) -> Result<(Vec<f64>, usize, Vec<f64>)> {
+        let fem = self
+            .fem
+            .as_ref()
+            .map_or(Err(StateSpaceError::MissingArguments("FEM".to_owned())), Ok)?;
+        let mut w = fem.eigen_frequencies_to_radians();
+        if let Some(eigen_frequencies) = &self.eigen_frequencies {
+            log::info!("Eigen values modified");
+            eigen_frequencies.into_iter().for_each(|(i, v)| {
+                w[*i] = v.to_radians();
+            });
+        }
+        let n_modes = match self.max_eigen_frequency {
+            Some(max_ef) => {
+                fem.eigen_frequencies
+                    .iter()
+                    .fold(0, |n, ef| if ef <= &max_ef { n + 1 } else { n })
+            }
+            None => fem.n_modes(),
+        };
+        if let Some(max_ef) = self.max_eigen_frequency {
+            log::info!("Eigen frequencies truncated to {:.3}Hz, hence reducing the number of modes from {} down to {}",max_ef,fem.n_modes(),n_modes)
+        }
+        let zeta = match self.zeta {
+            Some(zeta) => {
+                log::info!("Proportional coefficients modified, new value: {:.4}", zeta);
+                vec![zeta; n_modes]
+            }
+            None => fem.proportional_damping_vec.clone(),
+        };
+        Ok((w, n_modes, zeta))
+    }
+    pub fn build_obj(mut self) -> Result<DiscreteModalSolver<T>> {
+        let tau = self.sampling.map_or(
+            Err(StateSpaceError::MissingArguments("sampling".to_owned())),
+            |x| Ok(1f64 / x),
+        )?;
+
+        let (w, n_modes, zeta) = self.properties()?;
+
+        match (self.in2mode(n_modes), self.mode2out(n_modes)) {
+            (Some(forces_2_modes), Some(modes_2_nodes)) => {
+                log::info!("forces 2 modes: {:?}", forces_2_modes.shape());
+                log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());
+
+                let state_space: Vec<_> = match self.hankel_singular_values_threshold {
+                    Some(hsv_t) => (0..n_modes)
+                        .filter_map(|k| {
+                            let b = forces_2_modes.row(k).clone_owned();
+                            let c = modes_2_nodes.column(k);
+                            let hsv = Self::hankel_singular_value(
+                                w[k],
+                                zeta[k],
+                                b.as_slice(),
+                                c.as_slice(),
+                            );
+                            if hsv > hsv_t {
+                                Some(T::from_second_order(
+                                    tau,
+                                    w[k],
+                                    zeta[k],
+                                    b.as_slice().to_vec(),
+                                    c.as_slice().to_vec(),
+                                ))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect(),
+                    None => (0..n_modes)
+                        .map(|k| {
+                            let b = forces_2_modes.row(k).clone_owned();
+                            let c = modes_2_nodes.column(k);
+                            T::from_second_order(
+                                tau,
+                                w[k],
+                                zeta[k],
+                                b.as_slice().to_vec(),
+                                c.as_slice().to_vec(),
+                            )
+                        })
+                        .collect(),
+                };
+                Ok(DiscreteModalSolver {
+                    u: vec![0f64; forces_2_modes.ncols()],
+                    y: vec![0f64; modes_2_nodes.nrows()],
+                    state_space,
+                    ins: self.ins,
+                    outs: self.outs,
+                    ..Default::default()
+                })
+            }
+            (Some(_), None) => Err(StateSpaceError::Matrix(
+                "Failed to build modes to nodes transformation matrix".to_string(),
+            )),
+            (None, Some(_)) => Err(StateSpaceError::Matrix(
+                "Failed to build forces to nodes transformation matrix".to_string(),
+            )),
+            _ => Err(StateSpaceError::Matrix(
+                "Failed to build both modal transformation matrices".to_string(),
+            )),
+        }
+    }
     /// Builds the state space discrete model
     pub fn build(self) -> Result<DiscreteModalSolver<T>> {
         let tau = self.sampling.map_or(
@@ -563,6 +814,8 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             state_space,
             psi_dcg,
             psi_times_u: vec![0f64; modes_2_nodes.nrows()],
+            ins: Vec::new(),
+            outs: Vec::new(),
         })
     }
 }
@@ -585,6 +838,8 @@ pub struct DiscreteModalSolver<T: Solver + Default> {
     psi_dcg: Option<na::DMatrix<f64>>,
     /// Static gain correction vector
     psi_times_u: Vec<f64>,
+    pub ins: Vec<Box<dyn GetIn>>,
+    pub outs: Vec<Box<dyn GetOut>>,
 }
 impl<T: Solver + Default> DiscreteModalSolver<T> {
     /// Returns the model outputs filled with zeros
@@ -637,6 +892,8 @@ impl<T: Solver + Default> From<(SecondOrder, f64)> for DiscreteModalSolver<T> {
             state_space,
             psi_dcg: None,
             psi_times_u: vec![0f64; n_out],
+            ins: Vec::new(),
+            outs: Vec::new(),
         }
     }
 }
@@ -675,6 +932,8 @@ impl<T: Solver + Default> From<(SecondOrder, f64, (usize, usize))> for DiscreteM
             state_space,
             psi_dcg: None,
             psi_times_u: vec![0f64; n_out],
+            ins: Vec::new(),
+            outs: Vec::new(),
         }
     }
 }
@@ -708,6 +967,39 @@ impl Iterator for DiscreteModalSolver<Exponential> {
         Some(())
     }
 }
+
+pub trait Get<U> {
+    fn get(&self) -> Option<Vec<f64>>;
+}
+impl<T: Solver + Default, U: 'static> Get<U> for DiscreteModalSolver<T>
+where
+    Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+{
+    fn get(&self) -> Option<Vec<f64>> {
+        self.outs
+            .iter()
+            .find_map(|x| x.as_any().downcast_ref::<SplitFem<U>>())
+            .map(|io| self.y[io.range.start..io.range.end].to_vec())
+    }
+}
+pub trait Set<U> {
+    fn set(&mut self, u: &[f64]);
+}
+impl<T: Solver + Default, U: 'static> Set<U> for DiscreteModalSolver<T>
+where
+    Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
+{
+    fn set(&mut self, u: &[f64]) {
+        if let Some(io) = self
+            .ins
+            .iter()
+            .find_map(|x| x.as_any().downcast_ref::<SplitFem<U>>())
+        {
+            self.u[io.range.start..io.range.end].copy_from_slice(u);
+        }
+    }
+}
+
 impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
     type Item = ();
     fn next(&mut self) -> Option<Self::Item> {

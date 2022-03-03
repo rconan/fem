@@ -69,7 +69,7 @@ use serde::Serialize;
 use std::fmt;
 
 /// This structure is used to convert a continuous 2nd order ODE into a discrete state space model
-#[derive(Debug, Serialize, Clone, Default)]
+#[derive(Debug, Serialize, Clone, Default, PartialEq)]
 pub struct Exponential {
     /// Sampling time is second
     pub tau: f64,

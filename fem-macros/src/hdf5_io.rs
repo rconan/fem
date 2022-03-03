@@ -104,6 +104,8 @@ fn get_fem_io(h5: &hdf5::File, fem_io: &str) -> Result<(Vec<Literal>, Vec<Ident>
 fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_macro2::TokenStream {
     quote!(
 
+        #(pub enum #variants {};)*
+
         #[derive(Deserialize, Debug, Clone)]
         pub enum #io {
             #(#[doc = #names]
