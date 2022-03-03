@@ -230,6 +230,37 @@ impl FEM {
             })
             .collect()
     }
+    /// Returns the inputs 2 modes transformation matrix for a given input
+    pub fn input2modes(&self, id: usize) -> Option<Vec<f64>> {
+        self.inputs[id].as_ref().map(|input| {
+            let indices: Vec<u32> = input
+                .iter()
+                .filter_map(|x| match x {
+                    IO::On(io) => Some(io.indices.clone()),
+                    IO::Off(_) => None,
+                })
+                .flatten()
+                .collect();
+            let n = self.inputs_to_modal_forces.len() / self.n_modes();
+            self.inputs_to_modal_forces
+                .chunks(n)
+                .flat_map(|x| {
+                    indices
+                        .iter()
+                        .map(|i| x[*i as usize - 1])
+                        .collect::<Vec<f64>>()
+                })
+                .collect()
+        })
+    }
+    /// Returns the inputs 2 modes transformation matrix for an input type
+    pub fn in2modes<U>(&self) -> Option<Vec<f64>>
+    where
+        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
+    {
+        <Vec<Option<fem_io::Inputs>> as fem_io::FemIo<U>>::position(&self.inputs)
+            .and_then(|id| self.input2modes(id))
+    }
     /// Returns the modes 2 outputs transformation matrix for the turned-on outputs
     pub fn modes2outputs(&mut self) -> Vec<f64> {
         let n = self.n_modes();
@@ -263,6 +294,14 @@ impl FEM {
                 .cloned()
                 .collect()
         })
+    }
+    /// Returns the modes 2 outputs transformation matrix for an output type
+    pub fn modes2out<U>(&self) -> Option<Vec<f64>>
+    where
+        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+    {
+        <Vec<Option<fem_io::Outputs>> as fem_io::FemIo<U>>::position(&self.outputs)
+            .and_then(|id| self.modes2output(id))
     }
     /// Return the static gain reduced to the turned-on inputs and outputs
     pub fn reduced_static_gain(&mut self, n_io: (usize, usize)) -> Option<na::DMatrix<f64>> {

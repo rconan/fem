@@ -95,6 +95,9 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
     };
 
     quote!(
+        pub trait FemIo<U> {
+            fn position(&self) -> Option<usize>;
+        }
     #inputs
     #outputs
     )
@@ -162,12 +165,21 @@ fn get_fem_io(
 // Build the enum
 fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_macro2::TokenStream {
     quote!(
+        #(
+        #[derive(Debug)]
+        pub enum #variants {}
+      impl FemIo<#variants> for Vec<Option<#io>> {
+              fn position(&self) -> Option<usize>{
+          self.iter().filter_map(|x| x.as_ref()).position(|x| if let #io::#variants(_) = x {true} else {false})
+              }
+      }
+    )*
 
         #[derive(Deserialize, Debug, Clone)]
         pub enum #io {
             #(#[doc = #names]
-            #[serde(rename = #names)]
-            #variants(Vec<IO>)),*
+              #[serde(rename = #names)]
+              #variants(Vec<IO>)),*
         }
         impl #io {
             pub fn len(&self) -> usize {
@@ -178,7 +190,7 @@ fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_ma
                 }
             }
             pub fn get_by<F,T>(&self, pred: F) -> Vec<T>
-                where
+            where
                 F: Fn(&IOData) -> Option<T> + Copy,
             {
                 match self {
@@ -214,9 +226,9 @@ fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_ma
                         cs.sort();
                         cs.dedup();
                         if cs.len()>1 {
-                            write!(f,"{:>24}: [{:5}]",#names,self.len())
+                            write!(f,"{:>24}: [{:5}]",stringify!(#variants),self.len())
                         } else {
-                            write!(f,"{:>24}: [{:5}] {:?}",#names,self.len(),cs)
+                            write!(f,"{:>24}: [{:5}] {:?}",stringify!(#variants),self.len(),cs)
                         }}),*
                 }
             }
