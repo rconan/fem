@@ -157,6 +157,7 @@ impl<U> SetRange for SplitFem<U> {
 pub trait GetIn: SetRange + Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn get_in(&self, fem: &fem::FEM) -> Option<DMatrix<f64>>;
+    fn trim_in(&self, fem: &fem::FEM, matrix: &[f64]) -> Option<DMatrix<f64>>;
 }
 impl<U: 'static + Send + Sync> GetIn for SplitFem<U>
 where
@@ -170,10 +171,16 @@ where
             .as_ref()
             .map(|x| DMatrix::from_row_slice(fem.n_modes(), x.len() / fem.n_modes(), x))
     }
+    fn trim_in(&self, fem: &fem::FEM, matrix: &[f64]) -> Option<DMatrix<f64>> {
+        fem.trim2in::<U>(matrix)
+            .as_ref()
+            .map(|x| DMatrix::from_row_slice(fem.n_modes(), x.len() / fem.n_modes(), x))
+    }
 }
 pub trait GetOut: SetRange + Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn get_out(&self, fem: &fem::FEM) -> Option<DMatrix<f64>>;
+    fn trim_out(&self, fem: &fem::FEM, matrix: &[f64]) -> Option<DMatrix<f64>>;
 }
 impl<U: 'static + Send + Sync> GetOut for SplitFem<U>
 where
@@ -184,6 +191,11 @@ where
     }
     fn get_out(&self, fem: &fem::FEM) -> Option<DMatrix<f64>> {
         fem.modes2out::<U>()
+            .as_ref()
+            .map(|x| DMatrix::from_row_slice(x.len() / fem.n_modes(), fem.n_modes(), x))
+    }
+    fn trim_out(&self, fem: &fem::FEM, matrix: &[f64]) -> Option<DMatrix<f64>> {
+        fem.trim2out::<U>(matrix)
             .as_ref()
             .map(|x| DMatrix::from_row_slice(x.len() / fem.n_modes(), fem.n_modes(), x))
     }
@@ -243,7 +255,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
         }
     }
     ///
-    pub fn with_static_g_comp(self, n_io:(usize, usize)) -> Self {
+    pub fn with_static_g_comp(self, n_io: (usize, usize)) -> Self {
         Self {
             n_io: Some(n_io),
             ..self
@@ -569,6 +581,33 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             None
         }
     }
+    fn reduce2io(&self, matrix: &[f64], ncols: usize, nrows: usize) -> Option<DMatrix<f64>> {
+        if let Some(fem) = &self.fem {
+            let m: Vec<f64> = self
+                .ins
+                .iter()
+                .filter_map(|x| x.trim_in(fem, matrix))
+                .flat_map(|x| {
+                    x.column_iter()
+                        .flat_map(|x| x.iter().cloned().collect::<Vec<f64>>())
+                        .collect::<Vec<f64>>()
+                })
+                .collect();
+            let v: Vec<f64> = self
+                .outs
+                .iter()
+                .filter_map(|x| x.trim_out(fem, &m))
+                .flat_map(|x| {
+                    x.row_iter()
+                        .flat_map(|x| x.iter().cloned().collect::<Vec<f64>>())
+                        .collect::<Vec<f64>>()
+                })
+                .collect();
+            Some(DMatrix::from_row_slice(nrows, ncols, &v))
+        } else {
+            None
+        }
+    }
     fn properties(&self) -> Result<(Vec<f64>, usize, Vec<f64>)> {
         let fem = self
             .fem
@@ -613,6 +652,14 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             (Some(forces_2_modes), Some(modes_2_nodes)) => {
                 log::info!("forces 2 modes: {:?}", forces_2_modes.shape());
                 log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());
+
+                /*
+                    let d = na::DMatrix::from_diagonal(
+                        &na::DVector::from_row_slice(&w.iter().skip(3).take(n_modes).collect::<Vec<f64>>()))
+                            .map(|x| 1f64 / (x * x)),
+                    );
+                let dyn_static_gain = modes_2_nodes.remove_columns(0,3) * d * forces_2_modes.remove_rows(0,3);
+                 */
 
                 let state_space: Vec<_> = match self.hankel_singular_values_threshold {
                     Some(hsv_t) => (0..n_modes)
@@ -723,6 +770,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             n_mode,
             &fem_modes2io.into_iter().flatten().collect::<Vec<f64>>(),
         );
+
         log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());
         let mut w = fem.eigen_frequencies_to_radians();
         if let Some(eigen_frequencies) = self.eigen_frequencies {
@@ -731,6 +779,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 w[i] = v.to_radians();
             });
         }
+
         let n_modes = match self.max_eigen_frequency {
             Some(max_ef) => {
                 fem.eigen_frequencies
@@ -784,20 +833,29 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 .collect(),
         };
 
-        println!("FEM static solution - first 4x4 block x 1e10:\n{}",
-            fem.reduced_static_gain(self.n_io.unwrap()).unwrap().fixed_slice::<4,4>(0,0).scale(1e10));
+        println!(
+            "FEM static solution - first 4x4 block x 1e10:\n{}",
+            fem.reduced_static_gain(self.n_io.unwrap())
+                .unwrap()
+                .fixed_slice::<4, 4>(0, 0)
+                .scale(1e10)
+        );
 
-        println!("Dynamic model DC gain - first 4x4 block x 1e10:\n{}",
-            fem.static_gain().fixed_slice::<4,4>(0,0).scale(1e10));
+        println!(
+            "Dynamic model DC gain - first 4x4 block x 1e10:\n{}",
+            fem.static_gain().fixed_slice::<4, 4>(0, 0).scale(1e10)
+        );
 
-        let psi_dcg = if let Some(n_io) = self.n_io {            
-            println!("The elements of psi_dcg corresponding to the first 14 outputs (mount encoders)
-             and the first 20 inputs (mount drives) are set to zero.");
-            Some((fem.reduced_static_gain(n_io).unwrap() - fem.static_gain()).scale(1e10)
-                // .remove_fixed_rows::<14>(0)
-                // .insert_fixed_rows::<14>(0,0f64)
-                // .remove_fixed_columns::<20>(0)
-                // .insert_fixed_columns::<20>(0,0f64)
+        let psi_dcg = if let Some(n_io) = self.n_io {
+            println!(
+                "The elements of psi_dcg corresponding to the first 14 outputs (mount encoders)
+             and the first 20 inputs (mount drives) are set to zero."
+            );
+            Some(
+                (fem.reduced_static_gain(n_io).unwrap() - fem.static_gain()), // .remove_fixed_rows::<14>(0)
+                                                                              // .insert_fixed_rows::<14>(0,0f64)
+                                                                              // .remove_fixed_columns::<20>(0)
+                                                                              // .insert_fixed_columns::<20>(0,0f64)
             )
         } else {
             None
@@ -1005,7 +1063,7 @@ impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
     fn next(&mut self) -> Option<Self::Item> {
         let n = self.y.len();
         //        match &self.u {
-        let _u_ = &self.u;        
+        let _u_ = &self.u;
         self.y = self
             .state_space
             .par_iter_mut()
@@ -1029,16 +1087,17 @@ impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
             );
 
         if let Some(psi_dcg) = &self.psi_dcg {
-            self.y = self.y.iter_mut()
+            self.y = self
+                .y
+                .iter_mut()
                 .zip(self.psi_times_u.iter_mut())
                 .map(|(v1, v2)| *v1 + *v2)
                 .collect::<Vec<f64>>();
 
             let u_nalgebra = na::DVector::from_column_slice(&self.u);
-            self.psi_times_u = (psi_dcg * u_nalgebra)
-                .as_slice().to_vec();
+            self.psi_times_u = (psi_dcg * u_nalgebra).as_slice().to_vec();
         }
-        
+
         Some(())
     }
 }

@@ -120,11 +120,11 @@ impl FEM {
     pub fn static_from_env(self) -> Self {
         let fem_repo = env::var("FEM_REPO").unwrap();
         println!("Loading static gain matrix from static_reduction_model.73.pkl...");
-        let fem_static = Self::from_pickle(Path::new(&fem_repo)
-            .join("static_reduction_model.73.pkl"))
-            .unwrap();
+        let fem_static =
+            Self::from_pickle(Path::new(&fem_repo).join("static_reduction_model.73.pkl")).unwrap();
         Self {
-            static_gain : fem_static.static_gain, ..self
+            static_gain: fem_static.static_gain,
+            ..self
         }
     }
 
@@ -266,6 +266,28 @@ impl FEM {
                 .collect()
         })
     }
+    pub fn trim2input(&self, id: usize, matrix: &[f64]) -> Option<Vec<f64>> {
+        self.inputs[id].as_ref().map(|input| {
+            let indices: Vec<u32> = input
+                .iter()
+                .filter_map(|x| match x {
+                    IO::On(io) => Some(io.indices.clone()),
+                    IO::Off(_) => None,
+                })
+                .flatten()
+                .collect();
+            let n = self.inputs_to_modal_forces.len() / self.n_modes();
+            matrix
+                .chunks(n)
+                .flat_map(|x| {
+                    indices
+                        .iter()
+                        .map(|i| x[*i as usize - 1])
+                        .collect::<Vec<f64>>()
+                })
+                .collect()
+        })
+    }
     /// Returns the inputs 2 modes transformation matrix for an input type
     pub fn in2modes<U>(&self) -> Option<Vec<f64>>
     where
@@ -273,6 +295,13 @@ impl FEM {
     {
         <Vec<Option<fem_io::Inputs>> as fem_io::FemIo<U>>::position(&self.inputs)
             .and_then(|id| self.input2modes(id))
+    }
+    pub fn trim2in<U>(&self, matrix: &[f64]) -> Option<Vec<f64>>
+    where
+        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
+    {
+        <Vec<Option<fem_io::Inputs>> as fem_io::FemIo<U>>::position(&self.inputs)
+            .and_then(|id| self.trim2input(id, matrix))
     }
     /// Returns the modes 2 outputs transformation matrix for the turned-on outputs
     pub fn modes2outputs(&mut self) -> Vec<f64> {
@@ -308,6 +337,21 @@ impl FEM {
                 .collect()
         })
     }
+    pub fn trim2output(&self, id: usize, matrix: &[f64]) -> Option<Vec<f64>> {
+        let q: Vec<_> = matrix.chunks(self.n_modes()).collect();
+        self.outputs[id].as_ref().map(|output| {
+            output
+                .iter()
+                .filter_map(|x| match x {
+                    IO::On(io) => Some(io.indices.clone()),
+                    IO::Off(_) => None,
+                })
+                .flatten()
+                .flat_map(|i| q[i as usize - 1])
+                .cloned()
+                .collect()
+        })
+    }
     /// Returns the modes 2 outputs transformation matrix for an output type
     pub fn modes2out<U>(&self) -> Option<Vec<f64>>
     where
@@ -315,6 +359,13 @@ impl FEM {
     {
         <Vec<Option<fem_io::Outputs>> as fem_io::FemIo<U>>::position(&self.outputs)
             .and_then(|id| self.modes2output(id))
+    }
+    pub fn trim2out<U>(&self, matrix: &[f64]) -> Option<Vec<f64>>
+    where
+        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+    {
+        <Vec<Option<fem_io::Outputs>> as fem_io::FemIo<U>>::position(&self.outputs)
+            .and_then(|id| self.trim2output(id, matrix))
     }
     /// Return the static gain reduced to the turned-on inputs and outputs
     pub fn reduced_static_gain(&mut self, n_io: (usize, usize)) -> Option<na::DMatrix<f64>> {
@@ -363,18 +414,19 @@ impl FEM {
             .map(|new_gain| na::DMatrix::from_row_slice(n_reduced_io.1, n_reduced_io.0, &new_gain))
     }
     /// Returns the FEM static gain for the turned-on inputs and outputs
-    pub fn static_gain(&mut self) -> na::DMatrix<f64> {        
+    pub fn static_gain(&mut self) -> na::DMatrix<f64> {
         let forces_2_modes =
             na::DMatrix::from_row_slice(self.n_modes(), self.n_inputs(), &self.inputs2modes());
         let modes_2_nodes =
             na::DMatrix::from_row_slice(self.n_outputs(), self.n_modes(), &self.modes2outputs());
         let d = na::DMatrix::from_diagonal(
             &na::DVector::from_row_slice(&self.eigen_frequencies_to_radians())
-                .map(|x| 1f64 / (x * x)).remove_rows(0,3),
+                .map(|x| 1f64 / (x * x))
+                .remove_rows(0, 3),
         );
-        
+
         // println!("{ }",d.fixed_slice::<3,3>(0,0)); <- Just checking if unstable modes were removed
-        modes_2_nodes.remove_columns(0,3) * d * forces_2_modes.remove_rows(0,3)
+        modes_2_nodes.remove_columns(0, 3) * d * forces_2_modes.remove_rows(0, 3)
     }
 }
 impl fmt::Display for FEM {
