@@ -324,16 +324,18 @@ impl FEM {
             .map(|new_gain| na::DMatrix::from_row_slice(n_reduced_io.1, n_reduced_io.0, &new_gain))
     }
     /// Returns the FEM static gain for the turned-on inputs and outputs
-    pub fn static_gain(&mut self) -> na::DMatrix<f64> {
+    pub fn static_gain(&mut self) -> na::DMatrix<f64> {        
         let forces_2_modes =
             na::DMatrix::from_row_slice(self.n_modes(), self.n_inputs(), &self.inputs2modes());
         let modes_2_nodes =
             na::DMatrix::from_row_slice(self.n_outputs(), self.n_modes(), &self.modes2outputs());
         let d = na::DMatrix::from_diagonal(
             &na::DVector::from_row_slice(&self.eigen_frequencies_to_radians())
-                .map(|x| 1f64 / (x * x)),
+                .map(|x| 1f64 / (x * x)).remove_rows(0,3),
         );
-        modes_2_nodes * d * forces_2_modes
+        
+        // println!("{ }",d.fixed_slice::<3,3>(0,0)); <- Just checking if unstable modes were removed
+        modes_2_nodes.remove_columns(0,3) * d * forces_2_modes.remove_rows(0,3)
     }
 }
 impl fmt::Display for FEM {

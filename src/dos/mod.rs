@@ -533,12 +533,27 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 .collect(),
         };
 
-        let psi_dcg = if let Some(n_io) = self.n_io {
-            Some(fem.reduced_static_gain(n_io).unwrap() - fem.static_gain())
+        println!("FEM static solution - first 4x4 block x 1e10:\n{}",
+            fem.reduced_static_gain(self.n_io.unwrap()).unwrap().fixed_slice::<4,4>(0,0).scale(1e10));
+
+        println!("Dynamic model DC gain - first 4x4 block x 1e10:\n{}",
+            fem.static_gain().fixed_slice::<4,4>(0,0).scale(1e10));
+
+        let psi_dcg = if let Some(n_io) = self.n_io {            
+            println!("The elements of psi_dcg corresponding to the first 14 outputs (mount encoders)
+             and the first 20 inputs (mount drives) are set to zero.");
+            Some((fem.reduced_static_gain(n_io).unwrap() - fem.static_gain()).scale(1e10)
+                // .remove_fixed_rows::<14>(0)
+                // .insert_fixed_rows::<14>(0,0f64)
+                // .remove_fixed_columns::<20>(0)
+                // .insert_fixed_columns::<20>(0,0f64)
+            )
         } else {
             None
         };
-        
+
+        //println!("{}",psi_dcg.clone().unwrap().fixed_slice::<4,4>(0,0));
+
         Ok(DiscreteModalSolver {
             u: vec![0f64; forces_2_modes.ncols()],
             u_tags: dos_inputs,
@@ -722,7 +737,7 @@ impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
             );
 
         if let Some(psi_dcg) = &self.psi_dcg {
-            self.y.iter_mut()
+            self.y = self.y.iter_mut()
                 .zip(self.psi_times_u.iter_mut())
                 .map(|(v1, v2)| *v1 + *v2)
                 .collect::<Vec<f64>>();
