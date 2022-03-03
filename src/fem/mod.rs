@@ -266,7 +266,14 @@ impl FEM {
                 .collect()
         })
     }
-    pub fn trim2input(&self, id: usize, matrix: &[f64]) -> Option<Vec<f64>> {
+    pub fn trim2input(&self, id: usize, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>> {
+        let nrows = matrix.nrows();
+        let ncols = matrix.ncols();
+        assert_eq!(
+            ncols,
+            self.n_inputs(),
+            "Matrix columns # do not match inputs #"
+        );
         self.inputs[id].as_ref().map(|input| {
             let indices: Vec<u32> = input
                 .iter()
@@ -276,16 +283,12 @@ impl FEM {
                 })
                 .flatten()
                 .collect();
-            let n = self.inputs_to_modal_forces.len() / self.n_modes();
-            matrix
-                .chunks(n)
-                .flat_map(|x| {
-                    indices
-                        .iter()
-                        .map(|i| x[*i as usize - 1])
-                        .collect::<Vec<f64>>()
-                })
-                .collect()
+            na::DMatrix::from_columns(
+                &indices
+                    .iter()
+                    .map(|&i| matrix.column(i as usize - 1))
+                    .collect::<Vec<_>>(),
+            )
         })
     }
     /// Returns the inputs 2 modes transformation matrix for an input type
@@ -296,7 +299,7 @@ impl FEM {
         <Vec<Option<fem_io::Inputs>> as fem_io::FemIo<U>>::position(&self.inputs)
             .and_then(|id| self.input2modes(id))
     }
-    pub fn trim2in<U>(&self, matrix: &[f64]) -> Option<Vec<f64>>
+    pub fn trim2in<U>(&self, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>>
     where
         Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
     {
@@ -337,19 +340,27 @@ impl FEM {
                 .collect()
         })
     }
-    pub fn trim2output(&self, id: usize, matrix: &[f64]) -> Option<Vec<f64>> {
-        let q: Vec<_> = matrix.chunks(self.n_modes()).collect();
+    pub fn trim2output(&self, id: usize, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>> {
+        let nrows = matrix.nrows();
+        let ncols = matrix.ncols();
+        assert_eq!(
+            nrows,
+            self.n_outputs(),
+            "Matrix rows # do not match outputs #"
+        );
+        //let q: Vec<_> = matrix.chunks(self.n_modes()).collect();
         self.outputs[id].as_ref().map(|output| {
-            output
-                .iter()
-                .filter_map(|x| match x {
-                    IO::On(io) => Some(io.indices.clone()),
-                    IO::Off(_) => None,
-                })
-                .flatten()
-                .flat_map(|i| q[i as usize - 1])
-                .cloned()
-                .collect()
+            na::DMatrix::from_rows(
+                &output
+                    .iter()
+                    .filter_map(|x| match x {
+                        IO::On(io) => Some(io.indices.clone()),
+                        IO::Off(_) => None,
+                    })
+                    .flatten()
+                    .map(|i| matrix.row(i as usize - 1))
+                    .collect::<Vec<_>>(),
+            )
         })
     }
     /// Returns the modes 2 outputs transformation matrix for an output type
@@ -360,7 +371,7 @@ impl FEM {
         <Vec<Option<fem_io::Outputs>> as fem_io::FemIo<U>>::position(&self.outputs)
             .and_then(|id| self.modes2output(id))
     }
-    pub fn trim2out<U>(&self, matrix: &[f64]) -> Option<Vec<f64>>
+    pub fn trim2out<U>(&self, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>>
     where
         Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
     {

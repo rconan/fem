@@ -1,6 +1,6 @@
 use dosio::ios;
 use gmt_fem::{
-    dos::{DiscreteModalSolver, Exponential, Position},
+    dos::{DiscreteModalSolver, Exponential, Get, Position, Set},
     fem_io::*,
     FEM,
 };
@@ -10,7 +10,8 @@ fn main() -> anyhow::Result<()> {
     let fem = FEM::from_env()?;
     println!("{}", fem);
 
-    let state_space = DiscreteModalSolver::<Exponential>::from_fem(fem)
+    type SS = DiscreteModalSolver<Exponential>;
+    let state_space = SS::from_fem(fem)
         .sampling(1000_f64)
         .proportional_damping(2. / 100.)
         .max_eigen_frequency(5f64)
@@ -54,9 +55,9 @@ fn main() -> anyhow::Result<()> {
 
     let u: Vec<f64> = (1..=42).map(|x| x as f64).collect();
 
-    state_space_obj.set::<OSSM1Lcl6F>(&u);
+    <SS as Set<OSSM1Lcl6F>>::set(&mut state_space_obj, &u);
     println!("u: {:?}", state_space_obj.u);
-    println!("y: {:?}", state_space_obj.get::<OSSGIR6d>());
+    println!("y: {:?}", <SS as Get<OSSGIR6d>>::get(&state_space_obj));
 
     Ok(())
 }
