@@ -74,7 +74,7 @@ pub struct Exponential {
     /// Sampling time is second
     pub tau: f64,
     q: (f64, f64, f64, f64),
-    m: (f64, f64, f64, f64),
+    m: (f64, f64),
     b: Vec<f64>,
     c: Vec<f64>,
     /// State space model output vector
@@ -126,12 +126,12 @@ impl super::Solver for Exponential {
             (x * x * (ezpxy - ezmxy) / (2. * z)).re,
             ((zmxy * ezmxy + zpxy * ezpxy) / (2. * z)).re,
         );
-        let bd = ia * (ad - i); // / tau.sqrt();
+        let bd_ = ia * (ad - i);// / tau.sqrt();
         let n = continuous_cc.len();
         Self {
             tau,
             q: (ad[0], ad[2], ad[1], ad[3]),
-            m: (bd[0], bd[2], bd[1], bd[3]),
+            m: (bd_[2], bd_[3]),
             b: continuous_bb,
             c: continuous_cc,
             y: vec![0.; n],
@@ -146,8 +146,8 @@ impl super::Solver for Exponential {
             *y = c * x0;
         });
         let v = self.b.iter().zip(u).fold(0., |s, (b, u)| s + b * u);
-        self.x.0 = self.q.0 * x0 + self.q.1 * x1 + self.m.1 * v;
-        self.x.1 = self.q.2 * x0 + self.q.3 * x1 + self.m.3 * v;
+        self.x.0 = self.q.0 * x0 + self.q.1 * x1 + self.m.0 * v;
+        self.x.1 = self.q.2 * x0 + self.q.3 * x1 + self.m.1 * v;
         self.y.as_slice()
     }
 }
