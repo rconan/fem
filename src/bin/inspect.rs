@@ -26,10 +26,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(err) => {
             println!("{}", err);
-            match dos::SecondOrder::from_pickle(fem_data_path.join(&opt.file).to_str().unwrap()) {
-                Ok(fem) => println!("{}", fem),
-                Err(err) => print!("{}", err),
-            };
         }
     };
     Ok(())
