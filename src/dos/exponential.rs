@@ -126,7 +126,7 @@ impl super::Solver for Exponential {
             (x * x * (ezpxy - ezmxy) / (2. * z)).re,
             ((zmxy * ezmxy + zpxy * ezpxy) / (2. * z)).re,
         );
-        let bd_ = ia * (ad - i);// / tau.sqrt();
+        let bd_ = ia * (ad - i); // / tau.sqrt();
         let n = continuous_cc.len();
         Self {
             tau,

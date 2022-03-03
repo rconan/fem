@@ -18,8 +18,10 @@ pub struct Properties {
 /// Fem input/output data
 #[derive(Deserialize, Debug, Clone)]
 pub struct IOData {
+    #[allow(dead_code)]
     types: String,
     #[serde(rename = "exciteIDs")]
+    #[allow(dead_code)]
     excite_ids: Option<Vec<u32>>,
     pub descriptions: String,
     pub indices: Vec<u32>,

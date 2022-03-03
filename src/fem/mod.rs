@@ -267,10 +267,8 @@ impl FEM {
         })
     }
     pub fn trim2input(&self, id: usize, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>> {
-        let nrows = matrix.nrows();
-        let ncols = matrix.ncols();
         assert_eq!(
-            ncols,
+            matrix.ncols(),
             self.n_inputs(),
             "Matrix columns # do not match inputs #"
         );
@@ -341,10 +339,8 @@ impl FEM {
         })
     }
     pub fn trim2output(&self, id: usize, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>> {
-        let nrows = matrix.nrows();
-        let ncols = matrix.ncols();
         assert_eq!(
-            nrows,
+            matrix.nrows(),
             self.n_outputs(),
             "Matrix rows # do not match outputs #"
         );

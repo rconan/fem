@@ -1,6 +1,6 @@
 [package]
 name = "gmt-fem"
-version = "0.1.5"
+version = "0.2.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2018"
 license = "MIT"
@@ -24,13 +24,11 @@ log = "0.4.14"
 rayon = "1.5.1"
 bincode = "1.3.3"
 geotrans = "0.1.0"
-dosio = {  version = "0.1.3", default-features = false, optional = true }
 
 [features]
 default = ["fem-macros/hdf5"]
 prqt = ["fem-macros/prqt"]
-dos = ["dosio/default", "num-complex"]
-dos-prqt = ["dosio/prqt", "num-complex"]
+dos = ["num-complex"]
 
 [dev-dependencies]
 plotters = "0.3.0"
@@ -52,4 +50,4 @@ arrow = "6.3.0"
 
 [package.metadata.docs.rs]
 no-default-features = true
-features = ["prqt", "dos-prqt"]
+features = ["prqt", "dos"]

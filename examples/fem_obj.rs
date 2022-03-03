@@ -1,6 +1,5 @@
-use dosio::ios;
 use gmt_fem::{
-    dos::{DiscreteModalSolver, Exponential, Get, Position, Set},
+    dos::{DiscreteModalSolver, Exponential, Get, Set},
     fem_io::*,
     FEM,
 };
@@ -11,18 +10,8 @@ fn main() -> anyhow::Result<()> {
     println!("{}", fem);
 
     type SS = DiscreteModalSolver<Exponential>;
-    let state_space = SS::from_fem(fem)
-        .sampling(1000_f64)
-        .proportional_damping(2. / 100.)
-        .max_eigen_frequency(5f64)
-        .inputs(ios!(OSSRotDriveTorque, OSSM1Lcl6F, OSSGIR6F))
-        .outputs(ios!(OSSRotEncoderAngle, OSSM1Lcl, OSSGIR6d))
-        .build()?;
-    println!("{}", state_space);
-    println!("Y sizes: {:?}", state_space.y_sizes);
-
     let fem = FEM::from_env()?;
-    let mut state_space_obj = DiscreteModalSolver::<Exponential>::from_fem(fem)
+    let mut state_space_obj = SS::from_fem(fem)
         .sampling(1000_f64)
         .proportional_damping(2. / 100.)
         .max_eigen_frequency(5f64)
@@ -32,23 +21,12 @@ fn main() -> anyhow::Result<()> {
         .outs::<OSSRotEncoderAngle>()
         .outs::<OSSM1Lcl>()
         .outs::<OSSGIR6d>()
-        .build_obj()?;
+        .build()?;
+
+    println!("{state_space_obj}");
 
     println!("ins : {:?}", state_space_obj.ins);
     println!("outs: {:?}", state_space_obj.outs);
-
-    state_space
-        .state_space
-        .iter()
-        .zip(state_space_obj.state_space.iter())
-        .enumerate()
-        .for_each(|(k, (a, b))| {
-            if a == b {
-                println!("#{k:02} Y");
-            } else {
-                println!("#{k:02} N");
-            }
-        });
 
     println!("u: {:?}", state_space_obj.u);
     println!("y: {:?}", state_space_obj.y);
