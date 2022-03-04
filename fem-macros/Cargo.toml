@@ -15,17 +15,10 @@ keywords = ["telescope", "astronomy"]
 proc-macro = true
 
 [dependencies]
-arrow = { version = "6.5.0", optional = true }
-hdf5 = { version = "^0.8", optional = true }
-parquet = { version = "6.5.0", optional = true }
+arrow = { version = "6.5.0" }
+parquet = { version = "6.5.0" }
 proc-macro2 = "1.0.28"
 quote = "1.0.9"
 syn = "1.0.85"
-thiserror = { version = "1.0.30", optional = true }
-zip = { version = "0.5.13", optional = true }
-
-[features]
-prqt = ["arrow", "parquet", "thiserror", "zip"]
-
-[package.metadata.docs.rs]
-features = ["prqt"]
+thiserror = { version = "1.0.30" }
+zip = { version = "0.5.13" }
