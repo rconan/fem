@@ -5,10 +5,6 @@ use gmt_fem::{
 };
 
 fn main() -> anyhow::Result<()> {
-    simple_logger::SimpleLogger::new().env().init().unwrap();
-    let fem = FEM::from_env()?;
-    println!("{}", fem);
-
     type SS = DiscreteModalSolver<Exponential>;
     let fem = FEM::from_env()?;
     let mut state_space_obj = SS::from_fem(fem)
