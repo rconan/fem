@@ -109,33 +109,42 @@ impl super::Solver for Exponential {
         let m = (iqm * tau.sqrt()).as_slice().to_owned();
         */
         let i = Matrix2::<f64>::identity();
-        let x = Complex {
-            re: if omega == 0f64 { 1e-6 } else { omega },
-            im: 0.,
-        };
-        let y = Complex { re: zeta, im: 0. };
-        let ia = Matrix2::new((-2. * y / x).re, -1. / (x * x).re, 1., 0.);
-        let z = (x * x * (y * y - 1.)).sqrt();
-        let zmxy = z - x * y;
-        let zpxy = z + x * y;
-        let ezmxy = (tau * zmxy).exp();
-        let ezpxy = (-tau * zpxy).exp();
-        let ad = Matrix2::new(
-            ((zpxy * ezmxy + zmxy * ezpxy) / (2. * z)).re,
-            ((ezmxy - ezpxy) / (2. * z)).re,
-            (x * x * (ezpxy - ezmxy) / (2. * z)).re,
-            ((zmxy * ezmxy + zpxy * ezpxy) / (2. * z)).re,
-        );
-        let bd_ = ia * (ad - i); // / tau.sqrt();
         let n = continuous_cc.len();
-        Self {
-            tau,
-            q: (ad[0], ad[2], ad[1], ad[3]),
-            m: (bd_[2], bd_[3]),
-            b: continuous_bb,
-            c: continuous_cc,
-            y: vec![0.; n],
-            x: (0f64, 0f64),
+        if omega == 0f64 {
+            Self {
+                tau,
+                q: (1f64, tau, 0f64, 1f64),
+                m: (0.5 * tau * tau, tau),
+                b: continuous_bb,
+                c: continuous_cc,
+                y: vec![0.; n],
+                x: (0f64, 0f64),
+            }
+        } else {
+            let x = Complex { re: omega, im: 0. };
+            let y = Complex { re: zeta, im: 0. };
+            let ia = Matrix2::new((-2. * y / x).re, -1. / (x * x).re, 1., 0.);
+            let z = (x * x * (y * y - 1.)).sqrt();
+            let zmxy = z - x * y;
+            let zpxy = z + x * y;
+            let ezmxy = (tau * zmxy).exp();
+            let ezpxy = (-tau * zpxy).exp();
+            let ad = Matrix2::new(
+                ((zpxy * ezmxy + zmxy * ezpxy) / (2. * z)).re,
+                ((ezmxy - ezpxy) / (2. * z)).re,
+                (x * x * (ezpxy - ezmxy) / (2. * z)).re,
+                ((zmxy * ezmxy + zpxy * ezpxy) / (2. * z)).re,
+            );
+            let bd_ = ia * (ad - i); // / tau.sqrt();
+            Self {
+                tau,
+                q: (ad[0], ad[2], ad[1], ad[3]),
+                m: (bd_[2], bd_[3]),
+                b: continuous_bb,
+                c: continuous_cc,
+                y: vec![0.; n],
+                x: (0f64, 0f64),
+            }
         }
     }
     /// Returns the state space model output
