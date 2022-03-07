@@ -268,11 +268,11 @@ impl FEM {
         })
     }
     pub fn trim2input(&self, id: usize, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>> {
-        assert_eq!(
+        /*assert_eq!(
             matrix.ncols(),
             self.n_inputs(),
             "Matrix columns # do not match inputs #"
-        );
+        );*/
         self.inputs[id].as_ref().map(|input| {
             let indices: Vec<u32> = input
                 .iter()

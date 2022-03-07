@@ -8,9 +8,11 @@ fn main() -> anyhow::Result<()> {
     //simple_logger::SimpleLogger::new().env().init().unwrap();
 
     type SS = DiscreteModalSolver<ExponentialMatrix>;
-    let gmt_fem_dt = FEM::from_env()?.static_from_env();
+    let mut gmt_fem_dt = FEM::from_env()?.static_from_env();
     println!("{}", gmt_fem_dt);
-    let n_io = (gmt_fem_dt.n_inputs(),gmt_fem_dt.n_outputs());
+    let n_io = (gmt_fem_dt.n_inputs(), gmt_fem_dt.n_outputs());
+    gmt_fem_dt.filter_inputs_by(&[0], |x| x.descriptions.contains("M1"));
+    println!("{}", gmt_fem_dt);
     let mut state_space_obj = SS::from_fem(gmt_fem_dt)
         .sampling(1000_f64)
         .proportional_damping(2. / 100.)
@@ -18,6 +20,7 @@ fn main() -> anyhow::Result<()> {
         .ins::<OSSAzDriveTorque>()
         .ins::<OSSElDriveTorque>()
         .ins::<OSSRotDriveTorque>()
+        .ins::<CFD2021106F>()
         .ins::<OSSM1Lcl6F>()
         .ins::<OSSGIR6F>()
         .outs::<OSSAzEncoderAngle>()
@@ -25,9 +28,10 @@ fn main() -> anyhow::Result<()> {
         .outs::<OSSRotEncoderAngle>()
         .outs::<OSSM1Lcl>()
         .outs::<OSSGIR6d>()
-        .use_static_gain_compensation(n_io).build()?;
+        .use_static_gain_compensation(n_io)
+        .build()?;
 
-    println!("{}",state_space_obj);
+    println!("{}", state_space_obj);
 
     println!("ins : {:?}", state_space_obj.ins);
     println!("outs: {:?}", state_space_obj.outs);

@@ -18,7 +18,7 @@ serde-pickle = "0.6.2"
 simple_logger = "1.11.0"
 structopt = "0.3.21"
 fem-macros = { path = "fem-macros", version = "^0.2"}
-nalgebra = { version = "0.29.0" , features = ["rand"] }
+nalgebra = { version = "^0.30" , features = ["rand"] }
 env_logger = "0.9.0"
 log = "0.4.14"
 rayon = "1.5.1"

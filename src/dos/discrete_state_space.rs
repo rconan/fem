@@ -273,7 +273,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
 
                 let _psi_dcg = if let Some(n_io) = self.n_io {
                     println!(
-"The elements of psi_dcg corresponding to 
+                        "The elements of psi_dcg corresponding to 
     - OSSAzDriveTorque
     - OSSElDriveTorque
     - OSSRotDriveTorque
@@ -283,7 +283,14 @@ and
     - OSSRotEncoderAngle
 are set to zero."
                     );
-                    let q = self.fem.as_mut().unwrap().reduced_static_gain(n_io);
+                    //let q = self.fem.as_mut().unwrap().reduced_static_gain(n_io);
+                    let q = self
+                        .fem
+                        .as_mut()
+                        .unwrap()
+                        .static_gain
+                        .as_ref()
+                        .map(|x| DMatrix::from_row_slice(n_io.1, n_io.0, x));
                     let static_gain = self.reduce2io(&q.unwrap());
                     let d = na::DMatrix::from_diagonal(&na::DVector::from_row_slice(
                         &w.iter()
@@ -363,7 +370,7 @@ are set to zero."
                         .clone();
 
                     let torque_indices = az_torque.chain(el_torque).chain(rot_torque);
-                    let enc_indices = az_encoder.chain( el_encoder).chain(rot_encoder); 
+                    let enc_indices = az_encoder.chain(el_encoder).chain(rot_encoder);
 
                     for i in torque_indices {
                         for j in enc_indices.clone() {
