@@ -273,9 +273,16 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
 
                 let _psi_dcg = if let Some(n_io) = self.n_io {
                     println!(
-                "The elements of psi_dcg corresponding to the first 14 outputs (mount encoders)
-             and the first 20 inputs (mount drives) are set to zero."
-		    );
+"The elements of psi_dcg corresponding to 
+    - OSSAzDriveTorque
+    - OSSElDriveTorque
+    - OSSRotDriveTorque
+and
+    - OSSAzEncoderAngle
+    - OSSElEncoderAngle
+    - OSSRotEncoderAngle
+are set to zero."
+                    );
                     let q = self.fem.as_mut().unwrap().reduced_static_gain(n_io);
                     let static_gain = self.reduce2io(&q.unwrap());
                     let d = na::DMatrix::from_diagonal(&na::DVector::from_row_slice(
@@ -292,7 +299,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                         * forces_2_modes.clone().remove_rows(0, 3);
                     let mut psi_dcg = static_gain.unwrap() - dyn_static_gain;
 
-                    let torque = self
+                    let az_torque = self
                         .ins
                         .iter()
                         .find_map(|x| {
@@ -302,8 +309,8 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                         .unwrap()
                         .range
                         .clone();
-                    let encoder = self
-                        .ins
+                    let az_encoder = self
+                        .outs
                         .iter()
                         .find_map(|x| {
                             x.as_any()
@@ -312,13 +319,8 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                         .unwrap()
                         .range
                         .clone();
-                    for i in torque {
-                        for j in encoder.clone() {
-                            psi_dcg[(j, i)] = 0f64;
-                        }
-                    }
 
-                    let torque = self
+                    let el_torque = self
                         .ins
                         .iter()
                         .find_map(|x| {
@@ -328,8 +330,8 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                         .unwrap()
                         .range
                         .clone();
-                    let encoder = self
-                        .ins
+                    let el_encoder = self
+                        .outs
                         .iter()
                         .find_map(|x| {
                             x.as_any()
@@ -338,13 +340,8 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                         .unwrap()
                         .range
                         .clone();
-                    for i in torque {
-                        for j in encoder.clone() {
-                            psi_dcg[(j, i)] = 0f64;
-                        }
-                    }
 
-                    let torque = self
+                    let rot_torque = self
                         .ins
                         .iter()
                         .find_map(|x| {
@@ -354,8 +351,8 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                         .unwrap()
                         .range
                         .clone();
-                    let encoder = self
-                        .ins
+                    let rot_encoder = self
+                        .outs
                         .iter()
                         .find_map(|x| {
                             x.as_any()
@@ -364,9 +361,14 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                         .unwrap()
                         .range
                         .clone();
-                    for i in torque {
-                        for j in encoder.clone() {
+
+                    let torque_indices = az_torque.chain(el_torque).chain(rot_torque);
+                    let enc_indices = az_encoder.chain( el_encoder).chain(rot_encoder); 
+
+                    for i in torque_indices {
+                        for j in enc_indices.clone() {
                             psi_dcg[(j, i)] = 0f64;
+                            // println!("({},{})",j,i);
                         }
                     }
 

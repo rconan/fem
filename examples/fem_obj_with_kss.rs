@@ -1,27 +1,31 @@
 use gmt_fem::{
-    dos::{DiscreteModalSolver, Exponential, Get, Set},
+    dos::{DiscreteModalSolver, ExponentialMatrix, Get, Set},
     fem_io::*,
     FEM,
 };
 
 fn main() -> anyhow::Result<()> {
-    simple_logger::SimpleLogger::new().env().init().unwrap();
-    let fem = FEM::from_env()?;
-    println!("{}", fem);
+    //simple_logger::SimpleLogger::new().env().init().unwrap();
 
-    type SS = DiscreteModalSolver<Exponential>;
-    let fem = FEM::from_env()?;
-    let mut state_space_obj = SS::from_fem(fem)
+    type SS = DiscreteModalSolver<ExponentialMatrix>;
+    let gmt_fem_dt = FEM::from_env()?.static_from_env();
+    println!("{}", gmt_fem_dt);
+    let n_io = (gmt_fem_dt.n_inputs(),gmt_fem_dt.n_outputs());
+    let mut state_space_obj = SS::from_fem(gmt_fem_dt)
         .sampling(1000_f64)
         .proportional_damping(2. / 100.)
-        .max_eigen_frequency(5f64)
+        .max_eigen_frequency(75f64)
+        .ins::<OSSAzDriveTorque>()
+        .ins::<OSSElDriveTorque>()
         .ins::<OSSRotDriveTorque>()
         .ins::<OSSM1Lcl6F>()
         .ins::<OSSGIR6F>()
+        .outs::<OSSAzEncoderAngle>()
+        .outs::<OSSElEncoderAngle>()
         .outs::<OSSRotEncoderAngle>()
         .outs::<OSSM1Lcl>()
         .outs::<OSSGIR6d>()
-        .build()?;
+        .use_static_gain_compensation(n_io).build()?;
 
     println!("{}",state_space_obj);
 
