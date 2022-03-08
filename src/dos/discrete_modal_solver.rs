@@ -96,13 +96,10 @@ impl Iterator for DiscreteModalSolver<ExponentialMatrix> {
             );
 
         if let Some(psi_dcg) = &self.psi_dcg {
-            self.y = self
-                .y
+            self.y
                 .iter_mut()
-                .zip(self.psi_times_u.iter_mut())
-                .map(|(v1, v2)| *v1 + *v2)
-                .collect::<Vec<f64>>();
-
+                .zip(&self.psi_times_u)
+                .for_each(|(v1, v2)| *v1 += *v2);
             let u_nalgebra = na::DVector::from_column_slice(&self.u);
             self.psi_times_u = (psi_dcg * u_nalgebra).as_slice().to_vec();
         }

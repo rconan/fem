@@ -271,7 +271,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 log::info!("forces 2 modes: {:?}", forces_2_modes.shape());
                 log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());
 
-                let _psi_dcg = if let Some(n_io) = self.n_io {
+                let psi_dcg = if let Some(n_io) = self.n_io {
                     println!(
                         "The elements of psi_dcg corresponding to 
     - OSSAzDriveTorque
@@ -295,12 +295,11 @@ are set to zero."
                     let d = na::DMatrix::from_diagonal(&na::DVector::from_row_slice(
                         &w.iter()
                             .skip(3)
-                            .take(n_modes)
-                            .cloned()
+                            .take(n_modes - 3)
+                            .map(|x| x.recip())
+                            .map(|x| x * x)
                             .collect::<Vec<f64>>(),
-                    ))
-                    .map(|x| 1f64 / (x * x));
-
+                    ));
                     let dyn_static_gain = modes_2_nodes.clone().remove_columns(0, 3)
                         * d
                         * forces_2_modes.clone().remove_rows(0, 3);
@@ -428,6 +427,7 @@ are set to zero."
                     state_space,
                     ins: self.ins,
                     outs: self.outs,
+                    psi_dcg,
                     ..Default::default()
                 })
             }
