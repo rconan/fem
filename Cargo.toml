@@ -1,6 +1,6 @@
 [package]
 name = "gmt-fem"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2018"
 license = "MIT"
@@ -17,7 +17,7 @@ serde = { version = "1.0.119", features = ["derive"] }
 serde-pickle = "0.6.2"
 simple_logger = "1.11.0"
 structopt = "0.3.21"
-fem-macros = { path = "fem-macros", version = "^0.2"}
+fem-macros = { path = "fem-macros" , version = "0.2"}
 nalgebra = { version = "^0.30" , features = ["rand"] }
 env_logger = "0.9.0"
 log = "0.4.14"
@@ -37,5 +37,5 @@ triangle-rs = "0.1.2"
 complot = { version = "0.3.1", features = ["png"] }
 zip = "0.5.13"
 anyhow = "1.0.51"
-parquet = "6.3.0"
-arrow = "6.3.0"
+parquet = "10.0.0"
+arrow = "10.0.0"

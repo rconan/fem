@@ -6,8 +6,7 @@
 use arrow::{array::StringArray, record_batch::RecordBatch};
 use parquet::{
     arrow::{ArrowReader, ParquetFileArrowReader},
-    file::reader::SerializedFileReader,
-    util::cursor::SliceableCursor,
+    file::{reader::SerializedFileReader, serialized_reader::SliceableCursor},
 };
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Literal, Span};
@@ -120,12 +119,10 @@ fn get_fem_io(
     let mut arrow_reader = ParquetFileArrowReader::new(Arc::new(SerializedFileReader::new(
         SliceableCursor::new(Arc::new(contents)),
     )?));
-    if let Ok(input_records) = arrow_reader
-        .get_record_reader(2048)?
-        .collect::<Result<Vec<RecordBatch>, arrow::error::ArrowError>>()
-    {
-        let schema = input_records.get(0).unwrap().schema();
-        let table = RecordBatch::concat(&schema, &input_records)?;
+    let schema = Arc::new(arrow_reader.get_schema()?);
+    if let Ok(input_records) = arrow_reader.get_record_reader(2048) {
+        let v = input_records.collect::<arrow::error::Result<Vec<RecordBatch>>>()?;
+        let table = RecordBatch::concat(&schema, &v)?;
         let (idx, _) = schema.column_with_name("group").unwrap();
         let data: Option<Vec<&str>> = table
             .column(idx)

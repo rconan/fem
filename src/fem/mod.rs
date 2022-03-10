@@ -11,6 +11,7 @@ pub enum FEMError {
     FileNotFound(std::io::Error),
     PickleRead(serde_pickle::Error),
     EnvVar(env::VarError),
+    StaticGain,
 }
 impl fmt::Display for FEMError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -18,6 +19,7 @@ impl fmt::Display for FEMError {
             Self::FileNotFound(e) => write!(f, "FEM data file not found: {}", e),
             Self::PickleRead(e) => write!(f, "cannot read wind loads data file: {}", e),
             Self::EnvVar(e) => write!(f, "environment variable {} is not set", e),
+            Self::StaticGain => write!(f, "Static gain not found"),
         }
     }
 }
@@ -47,6 +49,7 @@ impl std::error::Error for FEMError {
             Self::FileNotFound(source) => Some(source),
             Self::PickleRead(source) => Some(source),
             Self::EnvVar(source) => Some(source),
+            Self::StaticGain => None,
         }
     }
 }
@@ -117,16 +120,24 @@ impl FEM {
             .fold(0usize, |a, x| a + x.len())
     }
 
-    /// Loads FEM static solution gain matrix from a pickle file "static_reduction_model.73.pkl" located in a directory given by the `FEM_REPO` environment variable
-    pub fn static_from_env(self) -> Self {
-        let fem_repo = env::var("FEM_REPO").unwrap();
-        println!("Loading static gain matrix from static_reduction_model.73.pkl...");
-        let fem_static =
-            Self::from_pickle(Path::new(&fem_repo).join("static_reduction_model.73.pkl")).unwrap();
-        Self {
-            static_gain: fem_static.static_gain,
+    /// Loads FEM static solution gain matrix
+    ///
+    /// The gain is loaded from a pickle file "static_reduction_model.73.pkl" located in a directory given by either the `FEM_REPO` or the `STATIC_FEM_REPO` environment variable, `STATIC_FEM_REPO` is tried first and if it failed then `FEM_REPO` is checked
+    pub fn static_from_env(self) -> Result<Self, FEMError> {
+        let fem_repo = env::var("STATIC_FEM_REPO").or(env::var("FEM_REPO"))?;
+        let path = Path::new(&fem_repo).join("static_reduction_model.73.pkl");
+        println!("Loading static gain matrix from {path:?}");
+        let fem_static = Self::from_pickle(path)?;
+        let static_gain = fem_static.static_gain.ok_or(FEMError::StaticGain)?;
+        assert_eq!(
+            static_gain.len(),
+            self.n_inputs() * self.n_outputs(),
+            "Static gain dimensions do not mach the dynamic FEM."
+        );
+        Ok(Self {
+            static_gain: Some(static_gain),
             ..self
-        }
+        })
     }
 
     /// Selects the inputs according to their natural ordering

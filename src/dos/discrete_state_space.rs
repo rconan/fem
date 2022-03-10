@@ -283,7 +283,6 @@ and
     - OSSRotEncoderAngle
 are set to zero."
                     );
-                    //let q = self.fem.as_mut().unwrap().reduced_static_gain(n_io);
                     let q = self
                         .fem
                         .as_mut()
