@@ -4,6 +4,7 @@ use nalgebra as na;
 use nalgebra::DMatrix;
 use rayon::prelude::*;
 use serde_pickle as pickle;
+use std::ops::Range;
 use std::{fs::File, marker::PhantomData, path::Path};
 
 /// This structure is the state space model builder based on a builder pattern design
@@ -304,16 +305,14 @@ are set to zero."
                         * forces_2_modes.clone().remove_rows(0, 3);
                     let mut psi_dcg = static_gain.unwrap() - dyn_static_gain;
 
-                    let az_torque = self
+                    let az_torque: Option<Range<usize>> = self
                         .ins
                         .iter()
                         .find_map(|x| {
                             x.as_any()
                                 .downcast_ref::<SplitFem<fem_io::OSSAzDriveTorque>>()
                         })
-                        .unwrap()
-                        .range
-                        .clone();
+                        .map(|x| x.range.clone());
                     let az_encoder = self
                         .outs
                         .iter()
@@ -321,9 +320,7 @@ are set to zero."
                             x.as_any()
                                 .downcast_ref::<SplitFem<fem_io::OSSAzEncoderAngle>>()
                         })
-                        .unwrap()
-                        .range
-                        .clone();
+                        .map(|x| x.range.clone());
 
                     let el_torque = self
                         .ins
@@ -332,9 +329,7 @@ are set to zero."
                             x.as_any()
                                 .downcast_ref::<SplitFem<fem_io::OSSElDriveTorque>>()
                         })
-                        .unwrap()
-                        .range
-                        .clone();
+                        .map(|x| x.range.clone());
                     let el_encoder = self
                         .outs
                         .iter()
@@ -342,9 +337,7 @@ are set to zero."
                             x.as_any()
                                 .downcast_ref::<SplitFem<fem_io::OSSElEncoderAngle>>()
                         })
-                        .unwrap()
-                        .range
-                        .clone();
+                        .map(|x| x.range.clone());
 
                     let rot_torque = self
                         .ins
@@ -353,9 +346,7 @@ are set to zero."
                             x.as_any()
                                 .downcast_ref::<SplitFem<fem_io::OSSRotDriveTorque>>()
                         })
-                        .unwrap()
-                        .range
-                        .clone();
+                        .map(|x| x.range.clone());
                     let rot_encoder = self
                         .outs
                         .iter()
@@ -363,12 +354,20 @@ are set to zero."
                             x.as_any()
                                 .downcast_ref::<SplitFem<fem_io::OSSRotEncoderAngle>>()
                         })
-                        .unwrap()
-                        .range
-                        .clone();
+                        .map(|x| x.range.clone());
 
-                    let torque_indices = az_torque.chain(el_torque).chain(rot_torque);
-                    let enc_indices = az_encoder.chain(el_encoder).chain(rot_encoder);
+                    let torque_indices: Vec<_> = az_torque
+                        .into_iter()
+                        .chain(el_torque.into_iter())
+                        .chain(rot_torque.into_iter())
+                        .flat_map(|x| x.collect::<Vec<usize>>())
+                        .collect();
+                    let enc_indices: Vec<_> = az_encoder
+                        .into_iter()
+                        .chain(el_encoder.into_iter())
+                        .chain(rot_encoder.into_iter())
+                        .flat_map(|x| x.collect::<Vec<usize>>())
+                        .collect();
 
                     for i in torque_indices {
                         for j in enc_indices.clone() {
