@@ -11,3 +11,4 @@ examples/M1_FEM
 *.ceo
 *.data*
 *.ipynb
+*.csv
