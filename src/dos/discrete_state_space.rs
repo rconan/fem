@@ -20,6 +20,7 @@ pub struct DiscreteStateSpace<T: Solver + Default> {
     phantom: PhantomData<T>,
     ins: Vec<Box<dyn GetIn>>,
     outs: Vec<Box<dyn GetOut>>,
+    outs_transform: Vec<Option<DMatrix<f64>>>,
 }
 impl<T: Solver + Default> From<FEM> for DiscreteStateSpace<T> {
     /// Creates a state space model builder from a FEM structure
@@ -117,9 +118,36 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
         Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
         U: 'static + Send + Sync,
     {
-        let mut outs = self.outs;
+        let Self {
+            mut outs,
+            mut outs_transform,
+            ..
+        } = self;
         outs.push(Box::new(SplitFem::<U>::new()));
-        Self { outs, ..self }
+        outs_transform.push(None);
+        Self {
+            outs,
+            outs_transform,
+            ..self
+        }
+    }
+    pub fn outs_with<U>(self, transform: DMatrix<f64>) -> Self
+    where
+        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+        U: 'static + Send + Sync,
+    {
+        let Self {
+            mut outs,
+            mut outs_transform,
+            ..
+        } = self;
+        outs.push(Box::new(SplitFem::<U>::new()));
+        outs_transform.push(Some(transform));
+        Self {
+            outs,
+            outs_transform,
+            ..self
+        }
     }
     /// Returns the Hankel singular value for a given eigen mode
     pub fn hankel_singular_value(w: f64, z: f64, b: &[f64], c: &[f64]) -> f64 {
@@ -187,8 +215,13 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             let v: Vec<f64> = self
                 .outs
                 .iter_mut()
-                .scan(0usize, |s, x| {
-                    let mat = x.get_out(fem).unwrap();
+                .zip(&self.outs_transform)
+                .scan(0usize, |s, (x, t)| {
+                    let mat = if let Some(t) = t {
+                        t * x.get_out(fem).unwrap()
+                    } else {
+                        x.get_out(fem).unwrap()
+                    };
                     let l = mat.nrows();
                     x.set_range(*s, *s + l);
                     *s += l;
@@ -219,7 +252,12 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 &self
                     .outs
                     .iter()
-                    .filter_map(|x| x.trim_out(fem, &m))
+                    .zip(&self.outs_transform)
+                    .filter_map(|(x, t)| match (x.trim_out(fem, &m), t) {
+                        (Some(x), Some(t)) => Some(t * x),
+                        (x, None) => x,
+                        _ => None,
+                    })
                     .flat_map(|x| x.row_iter().map(|x| x.clone_owned()).collect::<Vec<_>>())
                     .collect::<Vec<_>>(),
             ))
@@ -291,7 +329,9 @@ are set to zero."
                         .static_gain
                         .as_ref()
                         .map(|x| DMatrix::from_row_slice(n_io.1, n_io.0, x));
-                    let static_gain = self.reduce2io(&q.unwrap());
+                    let static_gain = self
+                        .reduce2io(&q.unwrap())
+                        .expect("Failed to produce FEM static gain");
                     let d = na::DMatrix::from_diagonal(&na::DVector::from_row_slice(
                         &w.iter()
                             .skip(3)
@@ -303,7 +343,8 @@ are set to zero."
                     let dyn_static_gain = modes_2_nodes.clone().remove_columns(0, 3)
                         * d
                         * forces_2_modes.clone().remove_rows(0, 3);
-                    let mut psi_dcg = static_gain.unwrap() - dyn_static_gain;
+
+                    let mut psi_dcg = static_gain - dyn_static_gain;
 
                     let az_torque: Option<Range<usize>> = self
                         .ins
