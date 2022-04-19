@@ -467,7 +467,7 @@ impl fmt::Display for FEM {
             .collect::<Vec<String>>()
             .join("\n");
         if let Some(_) = &self.static_gain {
-            write!(
+            writeln!(
                 f,
                 "INPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
                 ins,
@@ -488,7 +488,7 @@ impl fmt::Display for FEM {
                 .iter()
                 .cloned()
                 .fold(std::f64::NEG_INFINITY, f64::max);
-            write!(
+            writeln!(
             f,
             "  - # of modes: {}\n  - first 5 eigen frequencies: {:9.3?}\n  - last 5 eigen frequencies: {:9.3?}\n  - damping coefficients [min;max]: [{:.4};{:.4}] \nINPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
             self.n_modes(),
