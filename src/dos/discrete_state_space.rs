@@ -4,7 +4,6 @@ use nalgebra as na;
 use nalgebra::DMatrix;
 use rayon::prelude::*;
 use serde_pickle as pickle;
-use std::ops::Range;
 use std::{fs::File, marker::PhantomData, path::Path};
 
 /// This structure is the state space model builder based on a builder pattern design
@@ -16,6 +15,7 @@ pub struct DiscreteStateSpace<T: Solver + Default> {
     eigen_frequencies: Option<Vec<(usize, f64)>>,
     max_eigen_frequency: Option<f64>,
     hankel_singular_values_threshold: Option<f64>,
+    #[allow(dead_code)]
     n_io: Option<(usize, usize)>,
     phantom: PhantomData<T>,
     ins: Vec<Box<dyn GetIn>>,
@@ -238,6 +238,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             None
         }
     }
+    #[allow(dead_code)]
     fn reduce2io(&self, matrix: &DMatrix<f64>) -> Option<DMatrix<f64>> {
         if let Some(fem) = &self.fem {
             let m = DMatrix::from_columns(
@@ -310,7 +311,11 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 log::info!("forces 2 modes: {:?}", forces_2_modes.shape());
                 log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());
 
+                #[cfg(not(feature = "static-gain"))]
+                let psi_dcg: Option<DMatrix<f64>> = None;
+                #[cfg(feature = "static-gain")]
                 let psi_dcg = if let Some(n_io) = self.n_io {
+                    use std::ops::Range;
                     println!(
                         "The elements of psi_dcg corresponding to 
     - OSSAzDriveTorque

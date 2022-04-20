@@ -39,3 +39,10 @@ zip = "0.5.13"
 anyhow = "1.0.51"
 parquet = "10.0.0"
 arrow = "10.0.0"
+
+[features]
+default = ["static-gain"]
+static-gain = []
+
+[package.metadata.docs.rs]
+no-default-features = true
