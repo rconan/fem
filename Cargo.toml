@@ -2,7 +2,7 @@
 name = "gmt-fem"
 version = "0.2.6"
 authors = ["Rod Conan <rconan@gmto.org>"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "Giant Magellan Telescope Finite Element Model"
 repository = "https://github.com/rconan/fem"
