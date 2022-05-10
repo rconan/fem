@@ -94,6 +94,8 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
     };
 
     quote!(
+    use uid::UniqueIdentifier;
+    use uid_derive::UID;
         pub trait FemIo<U> {
             fn position(&self) -> Option<usize>;
         }
@@ -163,7 +165,7 @@ fn get_fem_io(
 fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_macro2::TokenStream {
     quote!(
         #(
-        #[derive(Debug)]
+        #[derive(Debug, UID)]
         pub enum #variants {}
       impl FemIo<#variants> for Vec<Option<#io>> {
               fn position(&self) -> Option<usize>{

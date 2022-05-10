@@ -52,7 +52,7 @@ for input in fem_outputs:
                 d[l] = fem_outputs[input][k][l].flatten().astype(np.uint32).tolist()
         fem_properties = fem_outputs[input][k]["properties"]
         d['properties'] = {x:fem_properties[x].flatten().tolist()
-                           for x in fem_properties}
+                           for x in fem_properties if fem_properties[x] is not None}
         d['properties']['nodeID'] = fem_properties['nodeID'].astype(np.uint32).flatten().tolist()
         try:
             d['properties']['csNumber'] = fem_properties['csNumber'].astype(np.uint32).flatten().tolist()
