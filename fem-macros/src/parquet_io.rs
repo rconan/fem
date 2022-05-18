@@ -76,18 +76,21 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
         (
             {
                 let (names, variants): (Vec<_>, Vec<_>) =
-                    ["Rodolphe", "Rodrigo", "Christoph", "Henry"]
+                    ["OSSAzDriveTorque", "OSSElDriveTorque", "OSSRotDriveTorque"]
                         .iter()
                         .map(|&v| (Literal::string(v), Ident::new(v, Span::call_site())))
                         .unzip();
                 build_fem_io(Ident::new("Inputs", Span::call_site()), names, variants)
             },
             {
-                let (names, variants): (Vec<_>, Vec<_>) =
-                    ["Conan", "Romano", "Dribusch", "Fitzpatrick"]
-                        .iter()
-                        .map(|&v| (Literal::string(v), Ident::new(v, Span::call_site())))
-                        .unzip();
+                let (names, variants): (Vec<_>, Vec<_>) = [
+                    "OSSAzEncoderAngle",
+                    "OSSElEncoderAngle",
+                    "OSSRotEncoderAngle",
+                ]
+                .iter()
+                .map(|&v| (Literal::string(v), Ident::new(v, Span::call_site())))
+                .unzip();
                 build_fem_io(Ident::new("Outputs", Span::call_site()), names, variants)
             },
         )

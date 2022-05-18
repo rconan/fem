@@ -311,9 +311,6 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
                 log::info!("forces 2 modes: {:?}", forces_2_modes.shape());
                 log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());
 
-                #[cfg(not(feature = "static-gain"))]
-                let psi_dcg: Option<DMatrix<f64>> = None;
-                #[cfg(feature = "static-gain")]
                 let psi_dcg = if let Some(n_io) = self.n_io {
                     use std::ops::Range;
                     println!(
