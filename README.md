@@ -1,2 +1,2 @@
 # fem
-Finite Element Model for the Giant Magellan Telescope
+Giant Magellan Telescope structural dynamics model simulation - Rust crate repository
