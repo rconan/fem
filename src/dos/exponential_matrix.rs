@@ -133,6 +133,8 @@ impl super::Solver for ExponentialMatrix {
     }
     /// Returns the state space model output
     fn solve(&mut self, u: &[f64]) -> &[f64] {
+
+        /* Implementation based on the standard state-space model realization:
         let (x0, x1) = self.x;
         self.y.iter_mut().zip(self.c.iter()).for_each(|(y, c)| {
             *y = c * x0;
@@ -141,7 +143,22 @@ impl super::Solver for ExponentialMatrix {
         self.x.0 = self.phi.0 * x0 + self.phi.1 * x1 + self.gamma.0 * v;
         self.x.1 = self.phi.2 * x0 + self.phi.3 * x1 + self.gamma.1 * v;
         self.y.as_slice()
+        */
+
+        // Alternative realization to cope with extra delay due to the bootstrap process
+        // State update
+        let (x0, x1): (f64, f64) = self.x;
+        let v = self.b.iter().zip(u).fold(0., |s, (b, u)| s + b * u);
+        self.x.0 = self.phi.0 * x0 + self.phi.1 * x1 + self.gamma.0 * v;
+        self.x.1 = self.phi.2 * x0 + self.phi.3 * x1 + self.gamma.1 * v;
+        // Output update
+        self.y.iter_mut().zip(self.c.iter()).for_each(|(y, c)| {
+            *y = c * self.x.0;
+        });
+        
+        self.y.as_slice()
     }
+
 }
 impl fmt::Display for ExponentialMatrix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
