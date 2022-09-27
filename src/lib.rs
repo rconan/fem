@@ -1,6 +1,9 @@
-pub mod io;
-//pub use io::{IOData, IO};
-
+#[cfg(feature = "full")]
 pub mod fem;
-pub use fem::{fem_io, FEM};
+#[cfg(feature = "full")]
+pub mod io;
+#[cfg(feature = "full")]
+pub use fem::FEM;
+#[cfg(feature = "full")]
 pub mod dos;
+pub use fem::fem_io;

@@ -30,6 +30,10 @@ dos-actors = { version = "3.0.1", package = "gmt_dos-actors", path = "../dos-act
 crseo = { version = "0.1.0", path = "../dos-actors/clients/ceo", package = "gmt_dos-clients_crseo", optional = true }
 mount = { version = "0.1.0", path = "../dos-actors/clients/mount", package = "gmt_dos-clients_mount", optional = true }
 
+[features]
+full = []
+default = ["full"]
+
 [dev-dependencies]
 plotters = "0.3.0"
 #datax = { path = "../datax" }
