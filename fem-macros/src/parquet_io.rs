@@ -97,8 +97,8 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
     };
 
     quote!(
-    use uid::UniqueIdentifier;
-    use uid_derive::UID;
+    //use uid::UniqueIdentifier;
+    //use dos_actors::UID;
         pub trait FemIo<U> {
             fn position(&self) -> Option<usize>;
         }

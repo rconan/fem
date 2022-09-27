@@ -63,6 +63,9 @@ mod discrete_modal_solver;
 #[doc(inline)]
 pub use discrete_modal_solver::DiscreteModalSolver;
 
+mod actors_interface;
+pub use actors_interface::*;
+
 pub trait Solver {
     fn from_second_order(
         tau: f64,
