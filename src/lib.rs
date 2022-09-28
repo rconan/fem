@@ -1,6 +1,4 @@
-#[cfg(feature = "full")]
 pub mod fem;
-#[cfg(feature = "full")]
 pub mod io;
 #[cfg(feature = "full")]
 pub use fem::FEM;
