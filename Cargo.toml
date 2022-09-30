@@ -24,15 +24,14 @@ log = "0.4.14"
 rayon = "1.5.1"
 bincode = "1.3.3"
 geotrans = "0.1.0"
-uid-derive = { version = "0.3.1", package = "dos-uid-derive" }
-uid = { version = "0.1.2", package = "dos-uid" }
 dos-actors = { version = "3.0.1", package = "gmt_dos-actors", path = "../dos-actors" }
-crseo = { version = "0.1.0", path = "../dos-actors/clients/ceo", package = "gmt_dos-clients_crseo", optional = true }
-mount = { version = "0.1.0", path = "../dos-actors/clients/mount", package = "gmt_dos-clients_mount", optional = true }
+dos-clients_io = { version = "0.1.0", path = "../dos-actors/clients/io", package = "gmt_dos-clients_io" }
 
 [features]
 full = []
 default = ["full"]
+fsm = []
+asm = []
 
 [dev-dependencies]
 plotters = "0.3.0"
