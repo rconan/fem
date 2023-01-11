@@ -63,7 +63,9 @@ mod discrete_modal_solver;
 #[doc(inline)]
 pub use discrete_modal_solver::DiscreteModalSolver;
 
+#[cfg(feature = "full")]
 mod actors_interface;
+#[cfg(feature = "full")]
 pub use actors_interface::*;
 
 pub trait Solver {
