@@ -243,6 +243,7 @@ where
         42
     }
 }
+#[cfg(not(feature = "mcm2lcl"))]
 impl<S> Write<M2RigidBodyMotions> for DiscreteModalSolver<S>
 where
     S: Solver + Default,
@@ -252,7 +253,16 @@ where
             .map(|data| Arc::new(Data::new(data)))
     }
 }
-
+#[cfg(feature = "mcm2lcl")]
+impl<S> Write<M2RigidBodyMotions> for DiscreteModalSolver<S>
+where
+    S: Solver + Default,
+{
+    fn write(&mut self) -> Option<Arc<Data<M2RigidBodyMotions>>> {
+        <DiscreteModalSolver<S> as Get<fem_io::MCM2Lcl>>::get(self)
+            .map(|data| Arc::new(Data::new(data)))
+    }
+}
 // # M2 CONTROL
 use dos_clients_io::{M2PositionerForces, M2PositionerNodes};
 // ## M2 positioner
@@ -360,24 +370,28 @@ pub mod asm {
     }
 }
 
-// # CFD
-// * mount
-use dos_clients_io::{CFDM1WindLoads, CFDMountWindLoads};
-impl<S> Read<CFDMountWindLoads> for DiscreteModalSolver<S>
-where
-    S: Solver + Default,
-{
-    fn read(&mut self, data: Arc<Data<CFDMountWindLoads>>) {
-        <DiscreteModalSolver<S> as Set<fem_io::CFD2021106F>>::set(self, &data)
+#[cfg(feature = "cfd2022")]
+pub mod cfd {
+    use super::{fem_io, Arc, Data, DiscreteModalSolver, Read, Set, Solver};
+    // # CFD
+    // * mount
+    use dos_clients_io::{CFDM1WindLoads, CFDMountWindLoads};
+    impl<S> Read<CFDMountWindLoads> for DiscreteModalSolver<S>
+    where
+        S: Solver + Default,
+    {
+        fn read(&mut self, data: Arc<Data<CFDMountWindLoads>>) {
+            <DiscreteModalSolver<S> as Set<fem_io::CFD2021106F>>::set(self, &data)
+        }
     }
-}
-// * M1
-impl<S> Read<CFDM1WindLoads> for DiscreteModalSolver<S>
-where
-    S: Solver + Default,
-{
-    fn read(&mut self, data: Arc<Data<CFDM1WindLoads>>) {
-        <DiscreteModalSolver<S> as Set<fem_io::OSSM1Lcl6F>>::set(self, &data)
+    // * M1
+    impl<S> Read<CFDM1WindLoads> for DiscreteModalSolver<S>
+    where
+        S: Solver + Default,
+    {
+        fn read(&mut self, data: Arc<Data<CFDM1WindLoads>>) {
+            <DiscreteModalSolver<S> as Set<fem_io::OSSM1Lcl6F>>::set(self, &data)
+        }
     }
 }
 // * M2

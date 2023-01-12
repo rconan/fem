@@ -29,9 +29,11 @@ dos-clients_io = { version = "0.2.0", package = "gmt_dos-clients_io", optional =
 
 [features]
 full = ["dos-clients_io"]
-default = ["full"]
+default = ["full", "cfd2022"]
 fsm = []
 asm = []
+mcm2lcl = []
+cfd2022 = []
 
 [dev-dependencies]
 plotters = "0.3.0"

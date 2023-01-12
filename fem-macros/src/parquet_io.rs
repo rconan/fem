@@ -128,12 +128,17 @@ fn get_fem_io(
     if let Ok(input_records) = arrow_reader.get_record_reader(2048) {
         let v = input_records.collect::<arrow::error::Result<Vec<RecordBatch>>>()?;
         let table = RecordBatch::concat(&schema, &v)?;
-        let (idx, _) = schema.column_with_name("group").unwrap();
+        let (idx, _) = schema
+            .column_with_name("group")
+            .expect(&format!(r#"failed to get {}puts "group" index"#, fem_io));
         let data: Option<Vec<&str>> = table
             .column(idx)
             .as_any()
             .downcast_ref::<StringArray>()
-            .unwrap()
+            .expect(&format!(
+                r#"failed to get {}puts "group" data at index #{}"#,
+                fem_io, idx
+            ))
             .iter()
             .collect();
         if let Some(mut data) = data {
