@@ -1,19 +1,26 @@
-use crate::io::{IOData, IO};
 use nalgebra as na;
-use serde;
 use serde::Deserialize;
 use serde_pickle as pkl;
 use std::{env, fmt, fs::File, io::BufReader, path::Path};
 
 pub mod fem_io;
+pub mod io;
+use io::{IOData, IO};
 
-pub enum FEMError {
-    FileNotFound(std::io::Error),
-    PickleRead(serde_pickle::Error),
-    EnvVar(env::VarError),
+#[derive(Debug, thiserror::Error)]
+pub enum FemError {
+    #[error("FEM data file not found")]
+    FileNotFound(#[from] std::io::Error),
+    #[error("cannot read wind loads data file")]
+    PickleRead(#[from] serde_pickle::Error),
+    #[error("environment variable is not set")]
+    EnvVar(#[from] env::VarError),
+    #[error("static gain not found")]
     StaticGain,
+    #[error("failed to convert {0}")]
+    Convert(String),
 }
-impl fmt::Display for FEMError {
+/* mpl fmt::Display for FEMError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::FileNotFound(e) => write!(f, "FEM data file not found: {}", e),
@@ -52,9 +59,9 @@ impl std::error::Error for FEMError {
             Self::StaticGain => None,
         }
     }
-}
+} */
 
-/// Finite Element Model
+/// GMT Finite Element Model
 #[derive(Deserialize, Debug, Clone)]
 pub struct FEM {
     /// Model info
@@ -81,14 +88,14 @@ pub struct FEM {
 }
 impl FEM {
     /// Loads a FEM model saved in a second order from a pickle file
-    pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM, FEMError> {
+    pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM, FemError> {
         let f = File::open(path)?;
         let r = BufReader::with_capacity(1_000_000, f);
         let v: serde_pickle::Value = serde_pickle::from_reader(r)?;
         Ok(pkl::from_value(v)?)
     }
     /// Loads a FEM model saved in a second order from a pickle file "modal_state_space_model_2ndOrder.73.pkl" located in a directory given by the `FEM)REPO` environment variable
-    pub fn from_env() -> Result<Self, FEMError> {
+    pub fn from_env() -> Result<Self, FemError> {
         let fem_repo = env::var("FEM_REPO")?;
         let path = Path::new(&fem_repo).join("modal_state_space_model_2ndOrder.73.pkl");
         println!("Loading FEM from {path:?}");
@@ -123,12 +130,12 @@ impl FEM {
     /// Loads FEM static solution gain matrix
     ///
     /// The gain is loaded from a pickle file "static_reduction_model.73.pkl" located in a directory given by either the `FEM_REPO` or the `STATIC_FEM_REPO` environment variable, `STATIC_FEM_REPO` is tried first and if it failed then `FEM_REPO` is checked
-    pub fn static_from_env(self) -> Result<Self, FEMError> {
+    pub fn static_from_env(self) -> Result<Self, FemError> {
         let fem_repo = env::var("STATIC_FEM_REPO").or(env::var("FEM_REPO"))?;
         let path = Path::new(&fem_repo).join("static_reduction_model.73.pkl");
         println!("Loading static gain matrix from {path:?}");
         let fem_static = Self::from_pickle(path)?;
-        let static_gain = fem_static.static_gain.ok_or(FEMError::StaticGain)?;
+        let static_gain = fem_static.static_gain.ok_or(FemError::StaticGain)?;
         assert_eq!(
             static_gain.len(),
             self.n_inputs() * self.n_outputs(),

@@ -107,5 +107,15 @@ elif "gainMatrixMountControlled" in data:
            "gainMatrix": data["gainMatrix"].flatten().tolist()}
     with open("static_reduction_model.73.pkl", "wb") as f:
         pickle.dump(fem, f)
+elif "gainMatrixMountControlled" in data:
+    fem = {"modelDescription": bytes(data["modelDescription"].flatten().tolist()).decode("utf-8","ignore"),
+           "inputs":inlist, "outputs":outlist,
+           "eigenfrequencies": [],
+           "inputs2ModalF": [],
+           "modalDisp2Outputs": [],
+           "proportionalDampingVec": [],
+           "gainMatrix": data["gainMatrixMountControlled"].flatten().tolist()}
+    with open("static_reduction_model.73.pkl", "wb") as f:
+        pickle.dump(fem, f)
 else:
     print("not a suitable model")

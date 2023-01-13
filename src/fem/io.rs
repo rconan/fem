@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 /// Fem input/output data properties
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct Properties {
     #[serde(rename = "nodeID")]
     pub node_id: Option<Vec<u32>>,
@@ -16,13 +16,13 @@ pub struct Properties {
     pub area: Option<Vec<f64>>,
 }
 /// Fem input/output data
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct IOData {
     #[allow(dead_code)]
-    types: String,
+    pub types: String,
     #[serde(rename = "exciteIDs")]
     #[allow(dead_code)]
-    excite_ids: Option<Vec<u32>>,
+    pub excite_ids: Option<Vec<u32>>,
     pub descriptions: String,
     pub indices: Vec<u32>,
     pub properties: Properties,

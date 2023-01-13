@@ -3,16 +3,15 @@
 //! The macro get the variant identifiers from the field names of the structures `fem_inputs` and `fem_outputs` in the file `modal_state_space_model_2ndOrder.rs.mat`.
 //! The location of the file is given by the environment variable `FEM_REPO`
 
-use arrow::{array::StringArray, record_batch::RecordBatch};
-use parquet::{
-    arrow::{ArrowReader, ParquetFileArrowReader},
-    file::{reader::SerializedFileReader, serialized_reader::SliceableCursor},
-};
+use arrow::array::StringArray;
+use arrow::record_batch::RecordBatchReader;
+use bytes::Bytes;
+use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Literal, Span};
 use quote::quote;
 use std::env;
-use std::{fs::File, io::Read, path::Path, sync::Arc};
+use std::{fs::File, io::Read, path::Path};
 use zip::ZipArchive;
 
 #[derive(thiserror::Error, Debug)]
@@ -102,6 +101,7 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
         pub trait FemIo<U> {
             fn position(&self) -> Option<usize>;
         }
+        type Item = (String,Vec<IO>);
     #inputs
     #outputs
     )
@@ -121,30 +121,38 @@ fn get_fem_io(
     let mut contents: Vec<u8> = Vec::new();
     input_file.read_to_end(&mut contents)?;
 
-    let mut arrow_reader = ParquetFileArrowReader::new(Arc::new(SerializedFileReader::new(
-        SliceableCursor::new(Arc::new(contents)),
-    )?));
-    let schema = Arc::new(arrow_reader.get_schema()?);
-    if let Ok(input_records) = arrow_reader.get_record_reader(2048) {
-        let v = input_records.collect::<arrow::error::Result<Vec<RecordBatch>>>()?;
-        let table = RecordBatch::concat(&schema, &v)?;
-        let (idx, _) = schema
-            .column_with_name("group")
-            .expect(&format!(r#"failed to get {}puts "group" index"#, fem_io));
-        let data: Option<Vec<&str>> = table
-            .column(idx)
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .expect(&format!(
-                r#"failed to get {}puts "group" data at index #{}"#,
-                fem_io, idx
-            ))
-            .iter()
-            .collect();
-        if let Some(mut data) = data {
+    let parquet_reader = ParquetRecordBatchReaderBuilder::try_new(Bytes::from(contents))?
+        .with_batch_size(2048)
+        .build()?;
+    let schema = parquet_reader.schema();
+
+    parquet_reader
+        .map(|maybe_table| {
+            if let Ok(table) = maybe_table {
+                let (idx, _) = schema
+                    .column_with_name("group")
+                    .expect(&format!(r#"failed to get {}puts "group" index"#, fem_io));
+                let data: Option<Vec<String>> = table
+                    .column(idx)
+                    .as_any()
+                    .downcast_ref::<StringArray>()
+                    .expect(&format!(
+                        r#"failed to get {}puts "group" data at index #{}"#,
+                        fem_io, idx
+                    ))
+                    .iter()
+                    .map(|x| x.map(|x| x.to_owned()))
+                    .collect();
+                data.ok_or(Error::NoData)
+            } else {
+                Err(Error::NoRecord)
+            }
+        })
+        .collect::<Result<Vec<_>, Error>>()
+        .map(|data| data.into_iter().flatten().collect::<Vec<_>>())
+        .map(|mut data| {
             data.dedup();
-            Ok(data
-                .into_iter()
+            data.into_iter()
                 .enumerate()
                 .map(|(k, fem_io)| {
                     let fem_io_rsed = fem_io
@@ -160,13 +168,8 @@ fn get_fem_io(
                         Ident::new(&fem_io_rsed, Span::call_site()),
                     )
                 })
-                .unzip())
-        } else {
-            Err(Error::NoData)
-        }
-    } else {
-        Err(Error::NoRecord)
-    }
+                .unzip()
+        })
 }
 
 // Build the enum
@@ -206,6 +209,13 @@ fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_ma
                     }),*
                 }
             }
+            pub fn name(&self) -> &str {
+                match self {
+                    #(#io::#variants(io) => {
+                        #names
+                    }),*
+                }
+            }
         }
         impl std::ops::Deref for #io {
             type Target = [IO];
@@ -237,6 +247,15 @@ fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_ma
                         } else {
                             write!(f,"{:>24}: [{:5}] {:?}",stringify!(#variants),self.len(),cs)
                         }}),*
+                }
+            }
+        }
+        impl TryFrom<Item> for #io {
+            type Error = FemError;
+            fn try_from((key,value): Item) -> std::result::Result<Self, Self::Error> {
+                match key.as_str() {
+                    #(#names => Ok(#io::#variants(value))),*,
+                    _ => Err(FemError::Convert(key)),
                 }
             }
         }

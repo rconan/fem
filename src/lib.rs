@@ -1,5 +1,7 @@
 pub mod fem;
-pub mod io;
-pub use fem::FEM;
+pub use fem::{
+    io::{IOData, Properties, IO},
+    FemError, FEM,
+};
 pub mod dos;
 pub use fem::fem_io;
