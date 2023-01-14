@@ -1,6 +1,6 @@
 [package]
 name = "gmt-fem"
-version = "0.3.2"
+version = "1.0.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2021"
 license = "MIT"
@@ -12,7 +12,7 @@ categories = ["science", "simulation"]
 keywords = ["telescope", "astronomy"]
 
 [workspace]
-members = ["fem-macros", "io"]
+members = ["fem-macros"]
 
 [workspace.dependencies]
 arrow = "30.0"
@@ -27,7 +27,7 @@ num-complex = { version = "0.4.2" }
 serde-pickle = "0.6.2"
 simple_logger = "1.11.0"
 structopt = "0.3.21"
-fem-macros = { path = "fem-macros", version = "0.2.5" }
+fem-macros = { path = "fem-macros", version = "0.3.0" }
 nalgebra = { version = "0.31", features = ["rand"] }
 env_logger = "0.9.0"
 log = "0.4.14"

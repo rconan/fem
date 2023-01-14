@@ -195,6 +195,9 @@ pub struct FEM {
     pub proportional_damping_vec: Vec<f64>,
     #[serde(rename = "gainMatrix")]
     pub static_gain: Option<Vec<f64>>,
+    /// number of inputs and outputs before any model reduction
+    #[serde(skip)]
+    pub n_io: (usize, usize),
 }
 impl FEM {
     /// Loads a FEM model saved in a second order from a pickle file
@@ -202,7 +205,9 @@ impl FEM {
         println!("Loading FEM from {:?}", path.as_ref());
         let file = File::open(path)?;
         let v: serde_pickle::Value = serde_pickle::from_reader(file)?;
-        Ok(pkl::from_value(v)?)
+        let mut fem: FEM = pkl::from_value(v)?;
+        fem.n_io = (fem.n_inputs(), fem.n_outputs());
+        Ok(fem)
     }
     pub fn from_zip_archive<P: AsRef<Path>>(path: P) -> Result<FEM> {
         let path = path.as_ref().join("modal_state_space_model_2ndOrder.zip");
@@ -211,6 +216,16 @@ impl FEM {
         let mut zip_file = zip::ZipArchive::new(file)?;
         let inputs = read_inputs(&mut zip_file)?;
         let outputs = read_outputs(&mut zip_file)?;
+        let n_io = (
+            inputs
+                .iter()
+                .filter_map(|x| x.as_ref())
+                .fold(0usize, |a, x| a + x.len()),
+            outputs
+                .iter()
+                .filter_map(|x| x.as_ref())
+                .fold(0usize, |a, x| a + x.len()),
+        );
 
         let mat_file = zip_file.by_name("modal_state_space_model_2ndOrder_mat.mat")?;
         let contents = read_contents(mat_file)?;
@@ -227,6 +242,8 @@ impl FEM {
             inputs_to_modal_forces: mat_file.var("inputs2ModalF")?,
             modal_disp_to_outputs: mat_file.var("modalDisp2Outputs")?,
             proportional_damping_vec: mat_file.var("proportionalDampingVec")?,
+            static_gain: mat_file.var("static_gain").ok(),
+            n_io,
             ..Default::default()
         })
     }
@@ -234,9 +251,8 @@ impl FEM {
     pub fn from_env() -> Result<Self> {
         let fem_repo = env::var("FEM_REPO")?;
         let path = Path::new(&fem_repo);
-        Self::from_zip_archive(path).or(Self::from_pickle(
-            &path.join("modal_state_space_model_2ndOrder.73.pkl"),
-        ))
+        Self::from_zip_archive(path)
+            .or_else(|_| Self::from_pickle(&path.join("modal_state_space_model_2ndOrder.73.pkl")))
     }
     /// Gets the number of modes
     pub fn n_modes(&self) -> usize {

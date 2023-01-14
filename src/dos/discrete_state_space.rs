@@ -15,8 +15,7 @@ pub struct DiscreteStateSpace<T: Solver + Default> {
     eigen_frequencies: Option<Vec<(usize, f64)>>,
     max_eigen_frequency: Option<f64>,
     hankel_singular_values_threshold: Option<f64>,
-    #[allow(dead_code)]
-    n_io: Option<(usize, usize)>,
+    use_static_gain: bool,
     phantom: PhantomData<T>,
     ins: Vec<Box<dyn GetIn>>,
     outs: Vec<Box<dyn GetOut>>,
@@ -56,9 +55,9 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
         }
     }
     ///
-    pub fn use_static_gain_compensation(self, n_io: (usize, usize)) -> Self {
+    pub fn use_static_gain_compensation(self) -> Self {
         Self {
-            n_io: Some(n_io),
+            use_static_gain: true,
             ..self
         }
     }
@@ -266,7 +265,7 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             None
         }
     }
-    fn properties(&self) -> Result<(Vec<f64>, usize, Vec<f64>)> {
+    fn properties(&self) -> Result<(Vec<f64>, usize, Vec<f64>, (usize, usize))> {
         let fem = self
             .fem
             .as_ref()
@@ -296,7 +295,8 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             }
             None => fem.proportional_damping_vec.clone(),
         };
-        Ok((w, n_modes, zeta))
+        let n_io = fem.n_io;
+        Ok((w, n_modes, zeta, n_io))
     }
     pub fn build(mut self) -> Result<DiscreteModalSolver<T>> {
         let tau = self.sampling.map_or(
@@ -304,14 +304,14 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             |x| Ok(1f64 / x),
         )?;
 
-        let (w, n_modes, zeta) = self.properties()?;
+        let (w, n_modes, zeta, n_io) = self.properties()?;
 
         match (self.in2mode(n_modes), self.mode2out(n_modes)) {
             (Some(forces_2_modes), Some(modes_2_nodes)) => {
                 log::info!("forces 2 modes: {:?}", forces_2_modes.shape());
                 log::info!("modes 2 nodes: {:?}", modes_2_nodes.shape());
 
-                let psi_dcg = if let Some(n_io) = self.n_io {
+                let psi_dcg = if self.use_static_gain {
                     use std::ops::Range;
                     println!(
                         "The elements of psi_dcg corresponding to 
