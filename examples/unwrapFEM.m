@@ -26,7 +26,9 @@ out_file = fullfile(destinationFolder, filename + "_out.parquet");
 writeTable(contents.outputTable, out_file)
 contents = rmfield(contents, ["inputTable", "outputTable"]);
 mat_file = fullfile(destinationFolder, filename + "_mat.mat");
-save(mat_file,'-v7.3', '-struct',...
+contents.inputs2ModalF = contents.inputs2ModalF';
+contents.modalDisp2Outputs = contents.modalDisp2Outputs';
+save(mat_file, '-struct',...
     'contents','eigenfrequencies','proportionalDampingVec',...
     'inputs2ModalF','modalDisp2Outputs','modelDescription')
 

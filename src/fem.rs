@@ -1,11 +1,26 @@
+use arrow::{
+    array::{Float64Array, StringArray},
+    datatypes::SchemaRef,
+    record_batch::{RecordBatch, RecordBatchReader},
+};
+use bytes::Bytes;
+use matio_rs::{MatFile, MatioError};
 use nalgebra as na;
+use parquet::{arrow::arrow_reader::ParquetRecordBatchReaderBuilder, errors::ParquetError};
 use serde::Deserialize;
 use serde_pickle as pkl;
-use std::{env, fmt, fs::File, io::BufReader, path::Path};
+use std::{
+    collections::HashMap,
+    env, fmt,
+    fs::File,
+    io::{Read, Write},
+    path::Path,
+};
+use zip::{read::ZipFile, result::ZipError, ZipArchive};
 
 pub mod fem_io;
 pub mod io;
-use io::{IOData, IO};
+use io::{IOData, Properties, IO};
 
 #[derive(Debug, thiserror::Error)]
 pub enum FemError {
@@ -19,7 +34,16 @@ pub enum FemError {
     StaticGain,
     #[error("failed to convert {0}")]
     Convert(String),
+    #[error("failed to read Parquet file")]
+    Parquet(#[from] ParquetError),
+    #[error("failed to read zip archive")]
+    ZipReader(#[from] ZipError),
+    #[error("failed to load Matlab file")]
+    Matlab(#[from] MatioError),
 }
+
+pub type Result<T> = std::result::Result<T, FemError>;
+
 /* mpl fmt::Display for FEMError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -61,8 +85,94 @@ impl std::error::Error for FEMError {
     }
 } */
 
+fn read<'a, T>(schema: &SchemaRef, table: &'a RecordBatch, col: &'a str) -> &'a T
+where
+    T: 'static,
+{
+    let Ok(idx )= schema.index_of(col) else {
+            panic!(r#"No "csLabel" in table!"#);
+        };
+    table
+        .column(idx)
+        .as_any()
+        .downcast_ref::<T>()
+        .expect("failed to downcast arrow record batcj column")
+}
+
+fn read_table(contents: Vec<u8>) -> Result<HashMap<String, Vec<IO>>> {
+    let parquet_reader = ParquetRecordBatchReaderBuilder::try_new(Bytes::from(contents))?
+        .with_batch_size(2048)
+        .build()?;
+    let schema = parquet_reader.schema();
+    let mut io_map: HashMap<String, Vec<IO>> = HashMap::new();
+    for maybe_table in parquet_reader {
+        let Ok(table) = maybe_table else {
+            panic!("Not a table!");
+        };
+
+        read::<StringArray>(&schema, &table, "csLabel")
+            .iter()
+            .zip(read::<Float64Array>(&schema, &table, "index").iter())
+            .zip(read::<Float64Array>(&schema, &table, "X").iter())
+            .zip(read::<Float64Array>(&schema, &table, "Y").iter())
+            .zip(read::<Float64Array>(&schema, &table, "Z").iter())
+            .zip(read::<StringArray>(&schema, &table, "description").iter())
+            .zip(read::<StringArray>(&schema, &table, "group").iter())
+            .filter_map(|data| {
+                if let ((((((Some(g), Some(f)), Some(e)), Some(d)), Some(c)), Some(b)), Some(a)) =
+                    data
+                {
+                    Some((g, f, e, d, c, b, a))
+                } else {
+                    None
+                }
+            })
+            .for_each(|(cs_label, index, x, y, z, description, group)| {
+                let value = IO::On(IOData {
+                    indices: vec![index as u32],
+                    descriptions: description.to_string(),
+                    properties: Properties {
+                        cs_label: Some(cs_label.to_string()),
+                        location: Some(vec![x, y, z]),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                });
+                io_map
+                    .entry(group.to_string())
+                    .or_insert(vec![])
+                    .push(value)
+            });
+    }
+    Ok(io_map)
+}
+
+fn read_contents(mut zip_file: ZipFile) -> Result<Vec<u8>> {
+    let mut contents: Vec<u8> = Vec::new();
+    zip_file.read_to_end(&mut contents)?;
+    Ok(contents)
+}
+
+fn read_inputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Inputs>>> {
+    read_table(read_contents(
+        zip_file.by_name("modal_state_space_model_2ndOrder_in.parquet")?,
+    )?)?
+    .into_iter()
+    .map(|item| Some(fem_io::Inputs::try_from(item)).transpose())
+    .collect()
+}
+
+fn read_outputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Outputs>>> {
+    read_table(read_contents(
+        zip_file.by_name("modal_state_space_model_2ndOrder_out.parquet")?,
+    )?)?
+    .into_iter()
+    .map(|item| Some(fem_io::Outputs::try_from(item)).transpose())
+    .collect()
+}
+
 /// GMT Finite Element Model
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone, Default)]
 pub struct FEM {
     /// Model info
     #[serde(rename = "modelDescription")]
@@ -88,18 +198,45 @@ pub struct FEM {
 }
 impl FEM {
     /// Loads a FEM model saved in a second order from a pickle file
-    pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM, FemError> {
-        let f = File::open(path)?;
-        let r = BufReader::with_capacity(1_000_000, f);
-        let v: serde_pickle::Value = serde_pickle::from_reader(r)?;
+    pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM> {
+        println!("Loading FEM from {:?}", path.as_ref());
+        let file = File::open(path)?;
+        let v: serde_pickle::Value = serde_pickle::from_reader(file)?;
         Ok(pkl::from_value(v)?)
     }
-    /// Loads a FEM model saved in a second order from a pickle file "modal_state_space_model_2ndOrder.73.pkl" located in a directory given by the `FEM)REPO` environment variable
-    pub fn from_env() -> Result<Self, FemError> {
-        let fem_repo = env::var("FEM_REPO")?;
-        let path = Path::new(&fem_repo).join("modal_state_space_model_2ndOrder.73.pkl");
+    pub fn from_zip_archive<P: AsRef<Path>>(path: P) -> Result<FEM> {
+        let path = path.as_ref().join("modal_state_space_model_2ndOrder.zip");
         println!("Loading FEM from {path:?}");
-        Self::from_pickle(path)
+        let file = File::open(path)?;
+        let mut zip_file = zip::ZipArchive::new(file)?;
+        let inputs = read_inputs(&mut zip_file)?;
+        let outputs = read_outputs(&mut zip_file)?;
+
+        let mat_file = zip_file.by_name("modal_state_space_model_2ndOrder_mat.mat")?;
+        let contents = read_contents(mat_file)?;
+        let mut file = tempfile::NamedTempFile::new()?;
+        file.write_all(contents.as_slice())?;
+        file.flush()?;
+        let mat_file = MatFile::load(file.path())?;
+
+        Ok(FEM {
+            inputs,
+            outputs,
+            // model_description: mat_file.var("modelDescription")?,
+            eigen_frequencies: mat_file.var("eigenfrequencies")?,
+            inputs_to_modal_forces: mat_file.var("inputs2ModalF")?,
+            modal_disp_to_outputs: mat_file.var("modalDisp2Outputs")?,
+            proportional_damping_vec: mat_file.var("proportionalDampingVec")?,
+            ..Default::default()
+        })
+    }
+    /// Loads a FEM model saved in a second order from a pickle file "modal_state_space_model_2ndOrder.73.pkl" located in a directory given by the `FEM)REPO` environment variable
+    pub fn from_env() -> Result<Self> {
+        let fem_repo = env::var("FEM_REPO")?;
+        let path = Path::new(&fem_repo);
+        Self::from_zip_archive(path).or(Self::from_pickle(
+            &path.join("modal_state_space_model_2ndOrder.73.pkl"),
+        ))
     }
     /// Gets the number of modes
     pub fn n_modes(&self) -> usize {
@@ -130,10 +267,10 @@ impl FEM {
     /// Loads FEM static solution gain matrix
     ///
     /// The gain is loaded from a pickle file "static_reduction_model.73.pkl" located in a directory given by either the `FEM_REPO` or the `STATIC_FEM_REPO` environment variable, `STATIC_FEM_REPO` is tried first and if it failed then `FEM_REPO` is checked
-    pub fn static_from_env(self) -> Result<Self, FemError> {
+    pub fn static_from_env(self) -> Result<Self> {
         let fem_repo = env::var("STATIC_FEM_REPO").or(env::var("FEM_REPO"))?;
         let path = Path::new(&fem_repo).join("static_reduction_model.73.pkl");
-        println!("Loading static gain matrix from {path:?}");
+        // println!("Loading static gain matrix from {path:?}");
         let fem_static = Self::from_pickle(path)?;
         let static_gain = fem_static.static_gain.ok_or(FemError::StaticGain)?;
         assert_eq!(

@@ -19,6 +19,8 @@ arrow = "30.0"
 parquet = "30.0"
 serde = { version = "1.0.152", features = ["derive"] }
 thiserror = "1.0.38"
+zip = "0.5.13"
+bytes = "1.3.0"
 
 [dependencies]
 num-complex = { version = "0.4.2" }
@@ -36,6 +38,12 @@ dos-actors = { version = "4.1.0", package = "gmt_dos-actors", default-features =
 dos-clients_io = { version = "0.2.0", package = "gmt_dos-clients_io", optional = true }
 serde.workspace = true
 thiserror.workspace = true
+arrow.workspace = true
+parquet.workspace = true
+zip.workspace = true
+bytes.workspace = true
+matio-rs = "1.1.2"
+tempfile = "3.3.0"
 
 [features]
 full = ["dos-clients_io"]
@@ -55,7 +63,6 @@ csv = "1.1.5"
 # spade = "1.8.2"
 triangle-rs = "0.1.2"
 complot = { version = "0.3.1", features = ["png"] }
-zip = "0.5.13"
 anyhow = "1.0.51"
 parquet.workspace = true
 arrow.workspace = true
