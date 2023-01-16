@@ -1,3 +1,5 @@
+//! # FEM inputs/outputs definitions
+
 use super::{
     io::{IOData, IO},
     FemError,

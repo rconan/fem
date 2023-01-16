@@ -1,40 +1,31 @@
 //! This module is used to build the state space model of the telescope structure
 //!
-//! A state space model is represented by the structure [`DiscreteModalSolver`] that is created using the builder [`DiscreteStateSpace`].
-//! The transformation of the FEM continuous 2nd order differential equation into a discrete state space model is performed by the [`Exponential`] structure (for the details of the transformation see the module [`exponential`]).
+//! A state space model is represented by the structure [DiscreteModalSolver] that is created using the builder [`DiscreteStateSpace`].
+//! The transformation of the FEM continuous 2nd order differential equation
+//! into a discrete state space model is performed by the [Exponential] structure
+//! (for the details of the transformation see the `exponential` module ).
 //!
 //! # Example
-//! The following example loads a FEM model from a pickle file and converts it into a state space model setting the sampling rate and the damping coefficients and truncating the eigen frequencies. A single input and a single output are selected, the input is initialized to 0 and we assert than the output is effectively 0 after one time step.
+//! The following example loads a FEM model and converts it into a state space model
+//! setting the sampling rate and the damping coefficients and truncating the eigen frequencies.
+//! A single input and a single output are selected.
 //! ```no_run
-//! use dos::{controllers::state_space::DiscreteStateSpace, io::jar, DOS};
-//! use fem::FEM;
-//! use std::path::Path;
-//! use simple_logger::SimpleLogger;
+//! use gmt_fem::{FEM,
+//!               dos::{DiscreteStateSpace, DiscreteModalSolver, Exponential},
+//!               fem_io::{OSSM1Lcl6F, OSSM1Lcl}};
 //!
-//! fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     SimpleLogger::new().init().unwrap();
+//! # fn main() -> anyhow::Result<()> {
 //!     let sampling_rate = 1e3; // Hz
-//!     let fem_data_path = Path::new("data").join("20210225_1447_MT_mount_v202102_ASM_wind2");
-//!     let fem = FEM::from_pickle(fem_data_path.join("modal_state_space_model_2ndOrder.pkl"))?;
-//!     let mut fem_ss = DiscreteStateSpace::from(fem)
+//!     let fem = FEM::from_env()?;
+//!     let mut fem_ss: DiscreteModalSolver<Exponential> = DiscreteStateSpace::from(fem)
 //!         .sampling(sampling_rate)
 //!         .proportional_damping(2. / 100.)
 //!         .max_eigen_frequency(75.0) // Hz
-//!         .inputs(vec![jar::OSSM1Lcl6F::new()])
-//!         .outputs(vec![jar::OSSM1Lcl::new()])
+//!         .ins::<OSSM1Lcl6F>()
+//!         .outs::<OSSM1Lcl>()
 //!         .build()?;
-//!     let y = fem_ss
-//!         .inputs(vec![jar::OSSM1Lcl6F::with(vec![0f64; 42])])?
-//!         .step()?
-//!         .outputs();
-//!     assert_eq!(
-//!         Option::<Vec<f64>>::from(&y.unwrap()[0]).unwrap()
-//!             .iter()
-//!             .sum::<f64>(),
-//!         0f64
-//!     );
-//!     Ok(())
-//! }
+//! # Ok::<(), anyhow::Error>(())
+//! # }
 //! ```
 
 use crate::{fem, fem_io};
@@ -48,19 +39,14 @@ use std::{
 };
 
 mod bilinear;
-#[doc(inline)]
 pub use bilinear::Bilinear;
 mod exponential;
-#[doc(inline)]
 pub use exponential::Exponential;
 mod exponential_matrix;
-#[doc(inline)]
 pub use exponential_matrix::ExponentialMatrix;
 mod discrete_state_space;
-#[doc(inline)]
 pub use discrete_state_space::DiscreteStateSpace;
 mod discrete_modal_solver;
-#[doc(inline)]
 pub use discrete_modal_solver::DiscreteModalSolver;
 
 #[cfg(feature = "full")]

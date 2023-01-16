@@ -61,13 +61,11 @@ impl<T: Solver + Default> DiscreteStateSpace<T> {
             ..self
         }
     }
-    /// Overwrites some eigen frequencies in Hz
+    /// Overwrites some eigen frequencies
     ///
-    /// Example
-    /// ```rust
-    /// // Setting the 1st 3 eigen values to 0
-    /// fem_ss.eigen_frequencies(vec![(0,0.),(1,0.),(2,0.)])
-    /// ```
+    /// The overwritten frequencies are specified as `(index,value)` where
+    /// index is the corresponding eigen mode index and
+    /// value is the new eigen frequency in Hz
     pub fn eigen_frequencies(self, eigen_frequencies: Vec<(usize, f64)>) -> Self {
         Self {
             eigen_frequencies: Some(eigen_frequencies),
