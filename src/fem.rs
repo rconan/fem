@@ -198,19 +198,24 @@ pub struct FEM {
     /// number of inputs and outputs before any model reduction
     #[serde(skip)]
     pub n_io: (usize, usize),
+    #[serde(skip)]
+    model: String,
 }
 impl FEM {
-    /// Loads a FEM model saved in a second order from a pickle file
+    /// Loads a FEM model, saved in a second order form, from a pickle file
+    ///
     pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM> {
         println!("Loading FEM from {:?}", path.as_ref());
-        let file = File::open(path)?;
+        let file = File::open(&path)?;
         let v: serde_pickle::Value = serde_pickle::from_reader(file)?;
         let mut fem: FEM = pkl::from_value(v)?;
         fem.n_io = (fem.n_inputs(), fem.n_outputs());
+        fem.model = path.as_ref().to_str().unwrap().to_string();
         Ok(fem)
     }
+    /// Loads a FEM model, saved in a second order form, from a zip archive file
     pub fn from_zip_archive<P: AsRef<Path>>(path: P) -> Result<FEM> {
-        let path = path.as_ref().join("modal_state_space_model_2ndOrder.zip");
+        let path = path.as_ref();
         println!("Loading FEM from {path:?}");
         let file = File::open(path)?;
         let mut zip_file = zip::ZipArchive::new(file)?;
@@ -244,14 +249,17 @@ impl FEM {
             proportional_damping_vec: mat_file.var("proportionalDampingVec")?,
             static_gain: mat_file.var("static_gain").ok(),
             n_io,
+            model: path.to_str().unwrap().to_string(),
             ..Default::default()
         })
     }
-    /// Loads a FEM model saved in a second order from a pickle file "modal_state_space_model_2ndOrder.73.pkl" located in a directory given by the `FEM)REPO` environment variable
+    /// Loads a FEM model, saved in a second order form, from a zip archive file located in a directory given by the `FEM_REPO` environment variable
+    ///
+    /// The name of the zip file must be `"modal_state_space_model_2ndOrder.zip`
     pub fn from_env() -> Result<Self> {
         let fem_repo = env::var("FEM_REPO")?;
         let path = Path::new(&fem_repo);
-        Self::from_zip_archive(path)
+        Self::from_zip_archive(path.join("modal_state_space_model_2ndOrder.zip"))
             .or_else(|_| Self::from_pickle(&path.join("modal_state_space_model_2ndOrder.73.pkl")))
     }
     /// Gets the number of modes
@@ -626,29 +634,18 @@ impl fmt::Display for FEM {
             .map(|(k, x)| format!(" #{:02} {}", k, x))
             .collect::<Vec<String>>()
             .join("\n");
-        if let Some(_) = &self.static_gain {
-            writeln!(
-                f,
-                "INPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
-                ins,
-                "Total",
-                self.n_inputs(),
-                outs,
-                "Total",
-                self.n_outputs()
-            )
-        } else {
-            let min_damping = self
-                .proportional_damping_vec
-                .iter()
-                .cloned()
-                .fold(std::f64::INFINITY, f64::min);
-            let max_damping = self
-                .proportional_damping_vec
-                .iter()
-                .cloned()
-                .fold(std::f64::NEG_INFINITY, f64::max);
-            writeln!(
+        let min_damping = self
+            .proportional_damping_vec
+            .iter()
+            .cloned()
+            .fold(std::f64::INFINITY, f64::min);
+        let max_damping = self
+            .proportional_damping_vec
+            .iter()
+            .cloned()
+            .fold(std::f64::NEG_INFINITY, f64::max);
+        writeln!(f, "GMT FEM ({})", self.model)?;
+        writeln!(
             f,
             "  - # of modes: {}\n  - first 5 eigen frequencies: {:9.3?}\n  - last 5 eigen frequencies: {:9.3?}\n  - damping coefficients [min;max]: [{:.4};{:.4}] \nINPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
             self.n_modes(),
@@ -662,6 +659,5 @@ impl fmt::Display for FEM {
             "Total",
             self.n_outputs()
         )
-        }
     }
 }

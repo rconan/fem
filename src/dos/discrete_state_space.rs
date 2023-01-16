@@ -32,7 +32,7 @@ impl<T: Solver + Default> From<FEM> for DiscreteStateSpace<T> {
 }
 impl<T: Solver + Default> DiscreteStateSpace<T> {
     /// Prints information about the FEM
-    pub fn fem_info(self) -> Self {
+    pub fn fem_info(&self) -> &Self {
         if let Some(fem) = self.fem.as_ref() {
             println!("{}", fem);
         } else {
