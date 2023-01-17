@@ -45,28 +45,26 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
         } else {
             return quote!(compile_error!("Cannot find `modal_state_space_model_2ndOrder.zip` in `FEM_REPO`");).into();
         };
-        let mut zip_file = if let Ok(val) = zip::ZipArchive::new(file) {
-            val
-        } else {
-            return quote!(compile_error!("`modal_state_space_model_2ndOrder.zip` in `FEM_REPO` is not a valid zip archive");).into();
-        };
+        let mut zip_file = zip::ZipArchive::new(file).expect("Zip archive");
         (
             // Get the inputs
             {
-                let (names, variants) = if let Ok(val) = get_fem_io(&mut zip_file, "in") {
-                    val
-                } else {
-                    return quote!(compile_error!("Cannot find struct `fem_inputs` in `modal_state_space_model_2ndOrder_in.parquet` in `FEM_REPO`");).into();
-                };
+                let (names, variants) = get_fem_io(&mut zip_file, "in")
+                    .map_err(|e| {
+                        println!("{e}");
+                        e
+                    })
+                    .expect("Get FEM Inputs");
                 build_fem_io(Ident::new("Inputs", Span::call_site()), names, variants)
             },
             // Get the outputs
             {
-                let (names, variants) = if let Ok(val) = get_fem_io(&mut zip_file, "out") {
-                    val
-                } else {
-                    return quote!(compile_error!("Cannot find struct `fem_outputs` in `modal_state_space_model_2ndOrder_out.parquet` in `FEM_REPO`");).into();
-                };
+                let (names, variants) = get_fem_io(&mut zip_file, "out")
+                    .map_err(|e| {
+                        println!("{e}");
+                        e
+                    })
+                    .expect("Get FEM Outputs");
                 build_fem_io(Ident::new("Outputs", Span::call_site()), names, variants)
             },
         )
