@@ -1,3 +1,4 @@
+use clap::Parser;
 use gmt_fem::{
     dos::{DiscreteStateSpace, Exponential},
     FEM,
@@ -23,7 +24,87 @@ fn frequency_base2_histogram<'a>(nu: &[f64], max_nu: f64) -> Vec<usize> {
         .collect()
 }
 
+fn model_reduction(
+    k: usize,
+    nu_hsv: &Vec<(f64, f64)>,
+    max_nu: f64,
+    n_mode: usize,
+    hsv_threshold: f64,
+    max_hsv: f64,
+    nu_hist: &mut Vec<Vec<usize>>,
+    nu_lower_bound: Option<f64>,
+) {
+    let red_nu_hsv: Vec<&(f64, f64)> = nu_hsv
+        .iter()
+        .filter(|(nu, _)| *nu <= nu_lower_bound.unwrap_or_default())
+        .chain(
+            nu_hsv
+                .iter()
+                .filter(|(nu, _)| *nu > nu_lower_bound.unwrap_or_default())
+                .filter(|(_, hsv)| *hsv > max_hsv * hsv_threshold),
+        )
+        .collect();
+
+    nu_hist.push(frequency_base2_histogram(
+        red_nu_hsv
+            .iter()
+            .map(|(nu, _)| *nu)
+            .collect::<Vec<f64>>()
+            .as_slice(),
+        max_nu,
+    ));
+
+    let min_nu = red_nu_hsv
+        .iter()
+        .map(|(nu, _)| nu)
+        .cloned()
+        .fold(f64::INFINITY, f64::min);
+    let max_nu = red_nu_hsv
+        .iter()
+        .map(|(nu, _)| nu)
+        .cloned()
+        .fold(f64::NEG_INFINITY, f64::max);
+
+    println!(
+        r#"
+{}. reduced model:
+ . hankel singular value threshold: {:.3e} ({:e})
+ . # of modes: {} ({:.1})%
+ . eigen frequencies range: {:.3?}Hz
+    "#,
+        k + 1,
+        max_hsv * hsv_threshold,
+        hsv_threshold,
+        red_nu_hsv.len(),
+        100. * red_nu_hsv.len() as f64 / n_mode as f64,
+        (min_nu, max_nu)
+    );
+}
+
+#[derive(Parser)]
+#[command(
+    author = "Rod Conan <rconan@gmto.org>",
+    version = "0.1.0",
+    about = "FEM properties summary with optional model reduction", long_about = None
+)]
+pub enum SubCommand {
+    #[command(name = "gmt-fem")]
+    GmtFem(GmtFem),
+}
+
+#[derive(Parser, Debug)]
+pub struct GmtFem {
+    /// Hankel singular value threshold
+    hsv: Option<f64>,
+    /// Frequency lower bound for Hankel singular value truncation (default: 0Hz)
+    #[arg(long)]
+    freq: Option<f64>,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let subc = SubCommand::parse();
+    let SubCommand::GmtFem(cli) = subc;
+
     let fem = FEM::from_env()?;
 
     let nu = fem.eigen_frequencies.clone();
@@ -50,44 +131,28 @@ HANKEL SINGULAR VALUES MODEL REDUCTION
 
     for (k, exp) in model_log_reduction.into_iter().enumerate() {
         let hsv_threshold = 10f64.powi(exp);
-        let red_nu_hsv: Vec<&(f64, f64)> = nu_hsv
-            .iter()
-            .filter(|(_, hsv)| *hsv > max_hsv * hsv_threshold)
-            .collect();
-
-        nu_hist.push(frequency_base2_histogram(
-            red_nu_hsv
-                .iter()
-                .map(|(nu, _)| *nu)
-                .collect::<Vec<f64>>()
-                .as_slice(),
+        model_reduction(
+            k,
+            &nu_hsv,
             max_nu,
-        ));
-
-        let min_nu = red_nu_hsv
-            .iter()
-            .map(|(nu, _)| nu)
-            .cloned()
-            .fold(f64::INFINITY, f64::min);
-        let max_nu = red_nu_hsv
-            .iter()
-            .map(|(nu, _)| nu)
-            .cloned()
-            .fold(f64::NEG_INFINITY, f64::max);
-
-        println!(
-            r#"
-{}. reduced model:
- . hankel singular value threshold: {:.3e} ({:e})
- . # of modes: {} ({:.1})%
- . eigen frequencies range: {:.3?}Hz
-    "#,
-            k + 1,
-            max_hsv * hsv_threshold,
+            n_mode,
             hsv_threshold,
-            red_nu_hsv.len(),
-            100. * red_nu_hsv.len() as f64 / n_mode as f64,
-            (min_nu, max_nu)
+            max_hsv,
+            &mut nu_hist,
+            None,
+        );
+    }
+
+    if let Some(hsv_threshold) = cli.hsv {
+        model_reduction(
+            4,
+            &nu_hsv,
+            max_nu,
+            n_mode,
+            hsv_threshold,
+            max_hsv,
+            &mut nu_hist,
+            cli.freq,
         );
     }
 

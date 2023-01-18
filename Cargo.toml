@@ -1,6 +1,6 @@
 [package]
 name = "gmt-fem"
-version = "1.1.0"
+version = "1.1.1"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2021"
 license = "MIT"
@@ -42,6 +42,7 @@ zip.workspace = true
 bytes.workspace = true
 matio-rs = "1.1.2"
 tempfile = "3.3.0"
+clap = { version = "4.1.1", features = ["derive"], optional = true }
 
 [features]
 full = ["dos-clients_io"]
@@ -68,6 +69,7 @@ arrow.workspace = true
 [[bin]]
 name = "cargo-gmt-fem"
 path = "src/bin/inspect.rs"
+required-features = ["clap"]
 
 [package.metadata.docs.rs]
 no-default-features = true

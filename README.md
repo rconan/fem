@@ -15,10 +15,17 @@ A summary of the properties of a GMT FEM can be obtained by running the Cargo su
 ```
 cargo gmt-fem
 ```
+
 The subcommand is installed with 
 ```
-cargo install -f gmt-fem
+cargo install -f --features clap gmt-fem
 ```
+Run 
+```
+cargo gmt-fem --help
+```
+to see the arguments to apply a custom model reduction.
+
 For the reasons explained above, the subcommand need to be re-installed each time it is applied to a new model.
 
 The zip archive `modal_state_space_model_2ndOrder.zip` is generated with the Matlab script `unwrapFEM.m` available in the `tools` directory.
