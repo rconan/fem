@@ -7,7 +7,7 @@ fn frequency_base2_histogram<'a>(nu: &[f64], max_nu: f64) -> Vec<usize> {
     (0..)
         .map_while(|i| {
             let upper = 2i32 << i;
-            let lower = if i == 0 { 0 } else { upper / 2 };
+            let lower = if i == 0 { 0 } else { upper >> 1 };
             if lower as f64 > max_nu {
                 None
             } else {
