@@ -99,7 +99,7 @@ where
         .expect("failed to downcast arrow record batcj column")
 }
 
-fn read_table(contents: Vec<u8>) -> Result<HashMap<String, Vec<IO>>> {
+fn read_table(contents: Vec<u8>) -> Result<Vec<(String, Vec<IO>)>> {
     let parquet_reader = ParquetRecordBatchReaderBuilder::try_new(Bytes::from(contents))?
         .with_batch_size(2048)
         .build()?;
@@ -144,7 +144,9 @@ fn read_table(contents: Vec<u8>) -> Result<HashMap<String, Vec<IO>>> {
                     .push(value)
             });
     }
-    Ok(io_map)
+    let mut sorted_map: Vec<_> = io_map.into_iter().collect();
+    sorted_map.sort_by_key(|a| a.0.to_string());
+    Ok(sorted_map)
 }
 
 fn read_contents(mut zip_file: ZipFile) -> Result<Vec<u8>> {
@@ -555,7 +557,8 @@ impl FEM {
             .and_then(|id| self.trim2output(id, matrix))
     }
     /// Return the static gain reduced to the turned-on inputs and outputs
-    pub fn reduced_static_gain(&mut self, n_io: (usize, usize)) -> Option<na::DMatrix<f64>> {
+    pub fn reduced_static_gain(&mut self) -> Option<na::DMatrix<f64>> {
+        let n_io = self.n_io;
         let n_reduced_io = (self.n_inputs(), self.n_outputs());
         self.static_gain
             .as_ref()

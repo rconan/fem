@@ -50,9 +50,7 @@ mod discrete_modal_solver;
 pub use discrete_modal_solver::DiscreteModalSolver;
 
 #[cfg(feature = "full")]
-mod actors_interface;
-#[cfg(feature = "full")]
-pub use actors_interface::*;
+pub mod actors_interface;
 
 pub trait Solver {
     fn from_second_order(

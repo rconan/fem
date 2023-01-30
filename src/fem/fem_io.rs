@@ -4,7 +4,7 @@ use super::{
     io::{IOData, IO},
     FemError,
 };
-use dos_actors::{io::UniqueIdentifier, UID};
+use gmt_dos_actors::UID;
 use serde;
 use serde::Deserialize;
 
