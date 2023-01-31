@@ -32,8 +32,8 @@ log = "0.4.14"
 rayon = "1.5.1"
 bincode = "1.3.3"
 geotrans = "0.1.0"
-dos-actors = { version = "4.1.0", package = "gmt_dos-actors", default-features = false }
-dos-clients_io = { version = "0.2.0", package = "gmt_dos-clients_io", optional = true }
+gmt_dos-actors = { version = "5.0.1", default-features = false, path = "../dos-actors" }
+dos-clients_io = { version = "1.0.0", package = "gmt_dos-clients_io", optional = true, path = "../dos-actors/clients/io" }
 serde.workspace = true
 thiserror.workspace = true
 arrow.workspace = true

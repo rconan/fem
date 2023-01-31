@@ -2,6 +2,6 @@ mod fem;
 pub use fem::{
     fem_io,
     io::{IOData, Properties, IO},
-    FemError, FEM,
+    FemError, Result, FEM,
 };
 pub mod dos;

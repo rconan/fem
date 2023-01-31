@@ -1,7 +1,7 @@
 //! CFD
 
 use super::prelude::*;
-use dos_clients_io::cfd_wind_loads::{CFDM1WindLoads, CFDM2WindLoads, CFDMountWindLoads};
+use dos_clients_io::cfd_wind_loads::{CFDM1WindLoads, CFDMountWindLoads};
 
 /// mount
 impl<S> Read<CFDMountWindLoads> for DiscreteModalSolver<S>
@@ -22,6 +22,8 @@ where
     }
 }
 
+#[cfg(any(feature = "asm", feature = "fsm"))]
+use dos_clients_io::cfd_wind_loads::CFDM2WindLoads;
 /// M2
 #[cfg(feature = "asm")]
 impl<S> Read<CFDM2WindLoads> for DiscreteModalSolver<S>

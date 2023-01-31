@@ -1,5 +1,5 @@
 use super::{DiscreteStateSpace, Exponential, ExponentialMatrix, GetIn, GetOut, Solver};
-use crate::FEM;
+use crate::{Result, FEM};
 use nalgebra as na;
 use rayon::prelude::*;
 use std::fmt;
@@ -33,6 +33,11 @@ impl<T: Solver + Default> DiscreteModalSolver<T> {
     /// Returns the FEM state space builer
     pub fn from_fem(fem: FEM) -> DiscreteStateSpace<T> {
         fem.into()
+    }
+    /// Loads a FEM model, saved in a second order form, from a zip archive file located in a directory given by the `FEM_REPO` environment variable
+    pub fn from_env() -> Result<DiscreteStateSpace<T>> {
+        let fem = FEM::from_env()?;
+        Ok(DiscreteModalSolver::from_fem(fem))
     }
 }
 

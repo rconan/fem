@@ -1,7 +1,13 @@
 //! M1 CONTROL
 
+#[doc(hidden)]
+pub use super::prelude;
 use super::prelude::*;
 use dos_clients_io::gmt_m1::{M1ModeShapes, M1RigidBodyMotions};
+
+pub mod actuators;
+pub mod hardpoints;
+pub mod rigid_body_motions;
 
 impl<S> Get<M1ModeShapes> for DiscreteModalSolver<S>
 where

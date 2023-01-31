@@ -194,6 +194,9 @@ where
 }
 pub trait Set<U> {
     fn set(&mut self, u: &[f64]);
+    fn set_slice(&mut self, _u: &[f64], _range: Range<usize>) {
+        unimplemented!()
+    }
 }
 impl<T: Solver + Default, U: 'static> Set<U> for DiscreteModalSolver<T>
 where
@@ -202,6 +205,11 @@ where
     fn set(&mut self, u: &[f64]) {
         if let Some(io) = self.ins.iter().find(|&x| x.as_any().is::<SplitFem<U>>()) {
             self.u[io.range()].copy_from_slice(u);
+        }
+    }
+    fn set_slice(&mut self, u: &[f64], range: Range<usize>) {
+        if let Some(io) = self.ins.iter().find(|&x| x.as_any().is::<SplitFem<U>>()) {
+            self.u[io.range()][range].copy_from_slice(u);
         }
     }
 }
