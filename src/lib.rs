@@ -4,4 +4,3 @@ pub use fem::{
     io::{IOData, Properties, IO},
     FemError, Result, FEM,
 };
-pub mod dos;

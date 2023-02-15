@@ -1,6 +1,6 @@
 [package]
 name = "fem-macros"
-version = "0.3.1"
+version = "1.0.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2018"
 license = "MIT"

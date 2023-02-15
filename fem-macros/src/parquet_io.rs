@@ -174,7 +174,7 @@ fn get_fem_io(
 fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_macro2::TokenStream {
     quote!(
         #(
-        #[derive(Debug, UID)]
+        #[derive(Debug, ::gmt_dos_clients::interface::UID)]
         pub enum #variants {}
       impl FemIo<#variants> for Vec<Option<#io>> {
               fn position(&self) -> Option<usize>{
