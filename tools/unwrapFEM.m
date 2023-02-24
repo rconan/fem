@@ -27,10 +27,14 @@ assert(numel(names) > 2, "modelFile does not seem to contain matrices")
 in_file = fullfile(destinationFolder, filename + "_in.parquet");
 writeTable(contents.inputTable, in_file)
 out_file = fullfile(destinationFolder, filename + "_out.parquet");
+contents.outputTable.Properties.RowNames(cellfun(@(x)  matches(x,'MC_M2_lcl'),...
+    contents.outputTable.Properties.RowNames)) = {'MC_M2_lcl_6D'};
 writeTable(contents.outputTable, out_file)
 contents = rmfield(contents, ["inputTable", "outputTable"]);
 
 mat_file = fullfile(destinationFolder, filename + "_mat.mat");
+inputs2ModalF = fullfile(destinationFolder,"inputs2ModalF.mat");
+modalDisp2Outputs = fullfile(destinationFolder,"modalDisp2Outputs.mat");
 
 contents.inputs2ModalF = contents.inputs2ModalF';
 contents.modalDisp2Outputs = contents.modalDisp2Outputs';
@@ -45,22 +49,24 @@ if exist(static_model_path,'file')
     end
     save(mat_file, '-struct',...
         'contents','eigenfrequencies','proportionalDampingVec',...
-        'inputs2ModalF','modalDisp2Outputs','modelDescription', ...
-        'static_gain')
+        'modelDescription', 'static_gain')
+        save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
+        save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
 else
-    save(mat_file, '-struct',...
-     'contents','eigenfrequencies','proportionalDampingVec',...
-     'inputs2ModalF','modalDisp2Outputs','modelDescription')
+    save(mat_file, '-struct','contents', ...
+        'eigenfrequencies','proportionalDampingVec','modelDescription')
+     save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
+     save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
 end
 
-
-
 zip(fullfile(destinationFolder, filename + ".zip"),...
-    [in_file,out_file,mat_file])
+    [in_file,out_file,mat_file,inputs2ModalF,modalDisp2Outputs])
 
 delete(in_file)
 delete(out_file)
 delete(mat_file)
+delete(inputs2ModalF)
+delete(modalDisp2Outputs)
 
   function writeTable(t, fn)
     % save table in parquet format

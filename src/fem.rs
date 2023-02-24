@@ -1,5 +1,5 @@
 use arrow::{
-    array::{Float64Array, StringArray},
+    array::{Float64Array, LargeStringArray, StringArray},
     datatypes::SchemaRef,
     record_batch::{RecordBatch, RecordBatchReader},
 };
@@ -40,6 +40,8 @@ pub enum FemError {
     ZipReader(#[from] ZipError),
     #[error("failed to load Matlab file")]
     Matlab(#[from] MatioError),
+    #[error("failed to read table column {0}")]
+    ReadTableColumn(String),
 }
 
 pub type Result<T> = std::result::Result<T, FemError>;
@@ -85,7 +87,7 @@ impl std::error::Error for FEMError {
     }
 } */
 
-fn read<'a, T>(schema: &SchemaRef, table: &'a RecordBatch, col: &'a str) -> &'a T
+fn read<'a, T>(schema: &SchemaRef, table: &'a RecordBatch, col: &'a str) -> Result<&'a T>
 where
     T: 'static,
 {
@@ -96,7 +98,7 @@ where
         .column(idx)
         .as_any()
         .downcast_ref::<T>()
-        .expect("failed to downcast arrow record batcj column")
+        .ok_or(FemError::ReadTableColumn(col.to_string()))
 }
 
 fn read_table(contents: Vec<u8>) -> Result<Vec<(String, Vec<IO>)>> {
@@ -109,15 +111,63 @@ fn read_table(contents: Vec<u8>) -> Result<Vec<(String, Vec<IO>)>> {
         let Ok(table) = maybe_table else {
             panic!("Not a table!");
         };
-
-        read::<StringArray>(&schema, &table, "csLabel")
+        read::<StringArray>(&schema, &table, "csLabel")?
             .iter()
-            .zip(read::<Float64Array>(&schema, &table, "index").iter())
-            .zip(read::<Float64Array>(&schema, &table, "X").iter())
-            .zip(read::<Float64Array>(&schema, &table, "Y").iter())
-            .zip(read::<Float64Array>(&schema, &table, "Z").iter())
-            .zip(read::<StringArray>(&schema, &table, "description").iter())
-            .zip(read::<StringArray>(&schema, &table, "group").iter())
+            .zip(read::<Float64Array>(&schema, &table, "index")?.iter())
+            .zip(read::<Float64Array>(&schema, &table, "X")?.iter())
+            .zip(read::<Float64Array>(&schema, &table, "Y")?.iter())
+            .zip(read::<Float64Array>(&schema, &table, "Z")?.iter())
+            .zip(read::<StringArray>(&schema, &table, "description")?.iter())
+            .zip(read::<StringArray>(&schema, &table, "group")?.iter())
+            .filter_map(|data| {
+                if let ((((((Some(g), Some(f)), Some(e)), Some(d)), Some(c)), Some(b)), Some(a)) =
+                    data
+                {
+                    Some((g, f, e, d, c, b, a))
+                } else {
+                    None
+                }
+            })
+            .for_each(|(cs_label, index, x, y, z, description, group)| {
+                let value = IO::On(IOData {
+                    indices: vec![index as u32],
+                    descriptions: description.to_string(),
+                    properties: Properties {
+                        cs_label: Some(cs_label.to_string()),
+                        location: Some(vec![x, y, z]),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                });
+                io_map
+                    .entry(group.to_string())
+                    .or_insert(vec![])
+                    .push(value)
+            });
+    }
+    let mut sorted_map: Vec<_> = io_map.into_iter().collect();
+    sorted_map.sort_by_key(|a| a.0.to_string());
+    Ok(sorted_map)
+}
+
+fn read_table2(contents: Vec<u8>) -> Result<Vec<(String, Vec<IO>)>> {
+    let parquet_reader = ParquetRecordBatchReaderBuilder::try_new(Bytes::from(contents))?
+        .with_batch_size(2048)
+        .build()?;
+    let schema = parquet_reader.schema();
+    let mut io_map: HashMap<String, Vec<IO>> = HashMap::new();
+    for maybe_table in parquet_reader {
+        let Ok(table) = maybe_table else {
+            panic!("Not a table!");
+        };
+        read::<LargeStringArray>(&schema, &table, "csLabel")?
+            .iter()
+            .zip(read::<Float64Array>(&schema, &table, "index")?.iter())
+            .zip(read::<Float64Array>(&schema, &table, "X")?.iter())
+            .zip(read::<Float64Array>(&schema, &table, "Y")?.iter())
+            .zip(read::<Float64Array>(&schema, &table, "Z")?.iter())
+            .zip(read::<LargeStringArray>(&schema, &table, "description")?.iter())
+            .zip(read::<LargeStringArray>(&schema, &table, "group")?.iter())
             .filter_map(|data| {
                 if let ((((((Some(g), Some(f)), Some(e)), Some(d)), Some(c)), Some(b)), Some(a)) =
                     data
@@ -156,21 +206,19 @@ fn read_contents(mut zip_file: ZipFile) -> Result<Vec<u8>> {
 }
 
 fn read_inputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Inputs>>> {
-    read_table(read_contents(
-        zip_file.by_name("modal_state_space_model_2ndOrder_in.parquet")?,
-    )?)?
-    .into_iter()
-    .map(|item| Some(fem_io::Inputs::try_from(item)).transpose())
-    .collect()
+    read_contents(zip_file.by_name("modal_state_space_model_2ndOrder_in.parquet")?)
+        .and_then(|contents| read_table(contents.clone()).or_else(|_| read_table2(contents)))?
+        .into_iter()
+        .map(|item| Some(fem_io::Inputs::try_from(item)).transpose())
+        .collect()
 }
 
 fn read_outputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Outputs>>> {
-    read_table(read_contents(
-        zip_file.by_name("modal_state_space_model_2ndOrder_out.parquet")?,
-    )?)?
-    .into_iter()
-    .map(|item| Some(fem_io::Outputs::try_from(item)).transpose())
-    .collect()
+    read_contents(zip_file.by_name("modal_state_space_model_2ndOrder_out.parquet")?)
+        .and_then(|contents| read_table(contents.clone()).or_else(|_| read_table2(contents)))?
+        .into_iter()
+        .map(|item| Some(fem_io::Outputs::try_from(item)).transpose())
+        .collect()
 }
 
 /// GMT Finite Element Model
@@ -234,6 +282,21 @@ impl FEM {
                 .fold(0usize, |a, x| a + x.len()),
         );
 
+        let mat_file = zip_file.by_name("inputs2ModalF.mat")?;
+        let contents = read_contents(mat_file)?;
+        let mut file = tempfile::NamedTempFile::new()?;
+        file.write_all(contents.as_slice())?;
+        file.flush()?;
+        let inputs_to_modal_forces: Vec<f64> = MatFile::load(file.path())?.var("inputs2ModalF")?;
+
+        let mat_file = zip_file.by_name("modalDisp2Outputs.mat")?;
+        let contents = read_contents(mat_file)?;
+        let mut file = tempfile::NamedTempFile::new()?;
+        file.write_all(contents.as_slice())?;
+        file.flush()?;
+        let modal_disp_to_outputs: Vec<f64> =
+            MatFile::load(file.path())?.var("modalDisp2Outputs")?;
+
         let mat_file = zip_file.by_name("modal_state_space_model_2ndOrder_mat.mat")?;
         let contents = read_contents(mat_file)?;
         let mut file = tempfile::NamedTempFile::new()?;
@@ -246,8 +309,8 @@ impl FEM {
             outputs,
             // model_description: mat_file.var("modelDescription")?,
             eigen_frequencies: mat_file.var("eigenfrequencies")?,
-            inputs_to_modal_forces: mat_file.var("inputs2ModalF")?,
-            modal_disp_to_outputs: mat_file.var("modalDisp2Outputs")?,
+            inputs_to_modal_forces,
+            modal_disp_to_outputs,
             proportional_damping_vec: mat_file.var("proportionalDampingVec")?,
             static_gain: mat_file.var("static_gain").ok(),
             n_io,
@@ -262,7 +325,7 @@ impl FEM {
         let fem_repo = env::var("FEM_REPO")?;
         let path = Path::new(&fem_repo);
         Self::from_zip_archive(path.join("modal_state_space_model_2ndOrder.zip"))
-            .or_else(|_| Self::from_pickle(&path.join("modal_state_space_model_2ndOrder.73.pkl")))
+        // .or_else(|_| Self::from_pickle(&path.join("modal_state_space_model_2ndOrder.73.pkl")))
     }
     /// Gets the number of modes
     pub fn n_modes(&self) -> usize {
@@ -470,6 +533,46 @@ impl FEM {
                     .collect::<Vec<_>>(),
             )
         })
+    }
+    pub fn in_position<U>(&self) -> Option<usize>
+    where
+        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
+    {
+        <Vec<Option<fem_io::Inputs>> as fem_io::FemIo<U>>::position(&self.inputs)
+    }
+    pub fn keep_input<U>(&mut self) -> Option<&mut Self>
+    where
+        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
+    {
+        self.in_position::<U>().map(|i| self.keep_inputs(&[i]))
+    }
+    pub fn keep_input_by<U, F>(&mut self, pred: F) -> Option<&mut Self>
+    where
+        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
+        F: Fn(&IOData) -> bool + Copy,
+    {
+        self.in_position::<U>()
+            .map(|i| self.keep_inputs_by(&[i], pred))
+    }
+    pub fn out_position<U>(&self) -> Option<usize>
+    where
+        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+    {
+        <Vec<Option<fem_io::Outputs>> as fem_io::FemIo<U>>::position(&self.outputs)
+    }
+    pub fn keep_output<U>(&mut self) -> Option<&mut Self>
+    where
+        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+    {
+        self.out_position::<U>().map(|i| self.keep_outputs(&[i]))
+    }
+    pub fn keep_output_by<U, F>(&mut self, pred: F) -> Option<&mut Self>
+    where
+        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
+        F: Fn(&IOData) -> bool + Copy,
+    {
+        self.out_position::<U>()
+            .map(|i| self.keep_outputs_by(&[i], pred))
     }
     /// Returns the inputs 2 modes transformation matrix for an input type
     pub fn in2modes<U>(&self) -> Option<Vec<f64>>

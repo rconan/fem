@@ -3,7 +3,7 @@
 //! The macro get the variant identifiers from the field names of the structures `fem_inputs` and `fem_outputs` in the file `modal_state_space_model_2ndOrder.rs.mat`.
 //! The location of the file is given by the environment variable `FEM_REPO`
 
-use arrow::array::StringArray;
+use arrow::array::{LargeStringArray, StringArray};
 use arrow::record_batch::RecordBatchReader;
 use bytes::Bytes;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
@@ -55,7 +55,23 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
                         e
                     })
                     .expect("Get FEM Inputs");
-                build_fem_io(Ident::new("Inputs", Span::call_site()), names, variants)
+                let io = build_fem_io(
+                    Ident::new("Inputs", Span::call_site()),
+                    names.clone(),
+                    variants.clone(),
+                );
+                quote!(
+                    impl TryFrom<String> for Box<dyn GetIn> {
+                       type Error = FemError;
+                       fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+                           match value.as_str() {
+                               #(#names => Ok(Box::new(SplitFem::<#variants>::new()))),*,
+                               _ => Err(FemError::Convert(value)),
+                           }
+                       }
+                    }
+                    #io
+                )
             },
             // Get the outputs
             {
@@ -65,7 +81,23 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
                         e
                     })
                     .expect("Get FEM Outputs");
-                build_fem_io(Ident::new("Outputs", Span::call_site()), names, variants)
+                let io = build_fem_io(
+                    Ident::new("Outputs", Span::call_site()),
+                    names.clone(),
+                    variants.clone(),
+                );
+                quote!(
+                    impl TryFrom<String> for Box<dyn GetOut> {
+                       type Error = FemError;
+                       fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+                           match value.as_str() {
+                               #(#names => Ok(Box::new(SplitFem::<#variants>::new()))),*,
+                               _ => Err(FemError::Convert(value)),
+                           }
+                       }
+                    }
+                    #io
+                )
             },
         )
     } else {
@@ -127,20 +159,44 @@ fn get_fem_io(
     parquet_reader
         .map(|maybe_table| {
             if let Ok(table) = maybe_table {
-                let (idx, _) = schema
-                    .column_with_name("group")
-                    .expect(&format!(r#"failed to get {}puts "group" index"#, fem_io));
-                let data: Option<Vec<String>> = table
-                    .column(idx)
-                    .as_any()
-                    .downcast_ref::<StringArray>()
-                    .expect(&format!(
-                        r#"failed to get {}puts "group" data at index #{}"#,
-                        fem_io, idx
-                    ))
-                    .iter()
-                    .map(|x| x.map(|x| x.to_owned()))
-                    .collect();
+                let (idx, _) = schema.column_with_name("group").expect(&format!(
+                    r#"failed to get {}puts "group" index with field:\n{:}"#,
+                    fem_io,
+                    schema.field_with_name("group").unwrap()
+                ));
+                let data: Option<Vec<String>> =
+                    match schema.field_with_name("group").unwrap().data_type() {
+                        arrow::datatypes::DataType::Utf8 => table
+                            .column(idx)
+                            .as_any()
+                            .downcast_ref::<StringArray>()
+                            .expect(&format!(
+                                r#"failed to get {}puts "group" data at index #{} from field\n{:}"#,
+                                fem_io,
+                                idx,
+                                schema.field_with_name("group").unwrap()
+                            ))
+                            .iter()
+                            .map(|x| x.map(|x| x.to_owned()))
+                            .collect(),
+                        arrow::datatypes::DataType::LargeUtf8 => table
+                            .column(idx)
+                            .as_any()
+                            .downcast_ref::<LargeStringArray>()
+                            .expect(&format!(
+                                r#"failed to get {}puts "group" data at index #{} from field\n{:}"#,
+                                fem_io,
+                                idx,
+                                schema.field_with_name("group").unwrap()
+                            ))
+                            .iter()
+                            .map(|x| x.map(|x| x.to_owned()))
+                            .collect(),
+                        other => panic!(
+                            r#"Expected "Uft8" or "LargeUtf8" datatype, found {}"#,
+                            other
+                        ),
+                    };
                 data.ok_or(Error::NoData)
             } else {
                 Err(Error::NoRecord)
@@ -176,12 +232,14 @@ fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_ma
         #(
         #[derive(Debug, ::gmt_dos_clients::interface::UID)]
         pub enum #variants {}
+
       impl FemIo<#variants> for Vec<Option<#io>> {
               fn position(&self) -> Option<usize>{
           self.iter().filter_map(|x| x.as_ref()).position(|x| if let #io::#variants(_) = x {true} else {false})
               }
       }
     )*
+
 
         #[derive(Deserialize, Debug, Clone)]
         pub enum #io {
@@ -257,5 +315,6 @@ fn build_fem_io(io: Ident, names: Vec<Literal>, variants: Vec<Ident>) -> proc_ma
                 }
             }
         }
+
     )
 }
