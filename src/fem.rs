@@ -206,6 +206,7 @@ fn read_contents(mut zip_file: ZipFile) -> Result<Vec<u8>> {
 }
 
 fn read_inputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Inputs>>> {
+    log::info!(r#"reading inputs table from "modal_state_space_model_2ndOrder_in.parquet""#);
     read_contents(zip_file.by_name("modal_state_space_model_2ndOrder_in.parquet")?)
         .and_then(|contents| read_table(contents.clone()).or_else(|_| read_table2(contents)))?
         .into_iter()
@@ -214,6 +215,7 @@ fn read_inputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Inp
 }
 
 fn read_outputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Outputs>>> {
+    log::info!(r#"reading outputs table from "modal_state_space_model_2ndOrder_out.parquet""#);
     read_contents(zip_file.by_name("modal_state_space_model_2ndOrder_out.parquet")?)
         .and_then(|contents| read_table(contents.clone()).or_else(|_| read_table2(contents)))?
         .into_iter()
@@ -266,7 +268,7 @@ impl FEM {
     /// Loads a FEM model, saved in a second order form, from a zip archive file
     pub fn from_zip_archive<P: AsRef<Path>>(path: P) -> Result<FEM> {
         let path = path.as_ref();
-        println!("Loading FEM from {path:?}");
+        log::info!("Loading FEM from {path:?}");
         let file = File::open(path)?;
         let mut zip_file = zip::ZipArchive::new(file)?;
         let inputs = read_inputs(&mut zip_file)?;
@@ -282,6 +284,7 @@ impl FEM {
                 .fold(0usize, |a, x| a + x.len()),
         );
 
+        log::info!(r#"loading inputs-to-modes matrix from "inputs2ModalF.mat""#);
         let mat_file = zip_file.by_name("inputs2ModalF.mat")?;
         let contents = read_contents(mat_file)?;
         let mut file = tempfile::NamedTempFile::new()?;
@@ -289,6 +292,7 @@ impl FEM {
         file.flush()?;
         let inputs_to_modal_forces: Vec<f64> = MatFile::load(file.path())?.var("inputs2ModalF")?;
 
+        log::info!(r#"loading modes-to-outputs matrix from "modalDisp2Outputs.mat""#);
         let mat_file = zip_file.by_name("modalDisp2Outputs.mat")?;
         let contents = read_contents(mat_file)?;
         let mut file = tempfile::NamedTempFile::new()?;
@@ -297,6 +301,19 @@ impl FEM {
         let modal_disp_to_outputs: Vec<f64> =
             MatFile::load(file.path())?.var("modalDisp2Outputs")?;
 
+        let static_gain = if let Ok(mat_file) = zip_file.by_name("static_gain.mat") {
+            log::info!(r#"loading static gain matrix from "static_gain.mat""#);
+            let contents = read_contents(mat_file)?;
+            let mut file = tempfile::NamedTempFile::new()?;
+            file.write_all(contents.as_slice())?;
+            file.flush()?;
+            let mat_file = MatFile::load(file.path())?;
+            mat_file.var("static_gain").ok()
+        } else {
+            None
+        };
+
+        log::info!(r#"loading FEM properties from "modal_state_space_model_2ndOrder_mat.mat""#);
         let mat_file = zip_file.by_name("modal_state_space_model_2ndOrder_mat.mat")?;
         let contents = read_contents(mat_file)?;
         let mut file = tempfile::NamedTempFile::new()?;
@@ -312,7 +329,7 @@ impl FEM {
             inputs_to_modal_forces,
             modal_disp_to_outputs,
             proportional_damping_vec: mat_file.var("proportionalDampingVec")?,
-            static_gain: mat_file.var("static_gain").ok(),
+            static_gain,
             n_io,
             model: path.to_str().unwrap().to_string(),
             ..Default::default()

@@ -35,6 +35,7 @@ contents = rmfield(contents, ["inputTable", "outputTable"]);
 mat_file = fullfile(destinationFolder, filename + "_mat.mat");
 inputs2ModalF = fullfile(destinationFolder,"inputs2ModalF.mat");
 modalDisp2Outputs = fullfile(destinationFolder,"modalDisp2Outputs.mat");
+static_gain_mat_file = fullfile(destinationFolder,"static_gain.mat");
 
 contents.inputs2ModalF = contents.inputs2ModalF';
 contents.modalDisp2Outputs = contents.modalDisp2Outputs';
@@ -43,20 +44,22 @@ static_model_path = fullfile(path_to_model,'static_reduction_model.mat');
 if exist(static_model_path,'file')
     static_model = load(static_model_path);
     if isfield(static_model,"gainMatrixMountControlled")
-        contents.static_gain = static_model.gainMatrixMountControlled';
-    else 
-        contents.static_gain = static_model.gainMatrix';
+        static_gain = static_model.gainMatrixMountControlled';
+        save(static_gain_mat_file,"static_gain")
+    else
+        static_gain = static_model.gainMatrix';
+        save(static_gain_mat_file,"static_gain")
     end
     save(mat_file, '-struct',...
         'contents','eigenfrequencies','proportionalDampingVec',...
         'modelDescription', 'static_gain')
-        save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
-        save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
+    save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
+    save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
 else
     save(mat_file, '-struct','contents', ...
         'eigenfrequencies','proportionalDampingVec','modelDescription')
-     save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
-     save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
+    save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
+    save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
 end
 
 zip(fullfile(destinationFolder, filename + ".zip"),...

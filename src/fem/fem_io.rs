@@ -15,11 +15,11 @@ use super::{
     FemError,
 };
 use nalgebra::DMatrix;
-use serde;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 fem_macros::ad_hoc! {}
 
+#[derive(Serialize, Deserialize)]
 pub struct SplitFem<U> {
     range: Range<usize>,
     io: PhantomData<U>,
