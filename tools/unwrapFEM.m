@@ -52,18 +52,20 @@ if exist(static_model_path,'file')
     end
     save(mat_file, '-struct',...
         'contents','eigenfrequencies','proportionalDampingVec',...
-        'modelDescription', 'static_gain')
+        'modelDescription')
     save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
     save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
+    zip(fullfile(destinationFolder, filename + ".zip"),...
+        [in_file,out_file,mat_file,inputs2ModalF,modalDisp2Outputs,static_gain_mat_file])
+    delete(static_gain_mat_file)
 else
     save(mat_file, '-struct','contents', ...
         'eigenfrequencies','proportionalDampingVec','modelDescription')
     save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
     save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
+    zip(fullfile(destinationFolder, filename + ".zip"),...
+        [in_file,out_file,mat_file,inputs2ModalF,modalDisp2Outputs])
 end
-
-zip(fullfile(destinationFolder, filename + ".zip"),...
-    [in_file,out_file,mat_file,inputs2ModalF,modalDisp2Outputs])
 
 delete(in_file)
 delete(out_file)

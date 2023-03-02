@@ -34,6 +34,14 @@ pub enum IO {
     On(IOData),
     Off(IOData),
 }
+impl From<IO> for IOData {
+    fn from(value: IO) -> Self {
+        match value {
+            IO::On(data) => data,
+            IO::Off(data) => data,
+        }
+    }
+}
 impl IO {
     pub fn switch_off(self) -> Self {
         match self {

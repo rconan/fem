@@ -65,6 +65,7 @@ pub trait GetIn: SetRange + Debug + Send + Sync {
     fn trim_in(&self, fem: &FEM, matrix: &DMatrix<f64>) -> Option<DMatrix<f64>>;
     fn fem_type(&self) -> String;
     fn range(&self) -> Range<usize>;
+    fn position(&self, fem: &Vec<Option<Inputs>>) -> Option<usize>;
 }
 impl<U: 'static + Send + Sync> GetIn for SplitFem<U>
 where
@@ -88,6 +89,10 @@ where
     fn range(&self) -> Range<usize> {
         self.range.clone()
     }
+
+    fn position(&self, inputs: &Vec<Option<Inputs>>) -> Option<usize> {
+        <Vec<Option<Inputs>> as FemIo<U>>::position(inputs)
+    }
 }
 pub trait GetOut: SetRange + Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;
@@ -95,6 +100,7 @@ pub trait GetOut: SetRange + Debug + Send + Sync {
     fn trim_out(&self, fem: &FEM, matrix: &DMatrix<f64>) -> Option<DMatrix<f64>>;
     fn fem_type(&self) -> String;
     fn range(&self) -> Range<usize>;
+    fn position(&self, outputs: &Vec<Option<Outputs>>) -> Option<usize>;
 }
 impl<U: 'static + Send + Sync> GetOut for SplitFem<U>
 where
@@ -117,5 +123,9 @@ where
 
     fn range(&self) -> Range<usize> {
         self.range.clone()
+    }
+
+    fn position(&self, outputs: &Vec<Option<Outputs>>) -> Option<usize> {
+        <Vec<Option<Outputs>> as FemIo<U>>::position(outputs)
     }
 }

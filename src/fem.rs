@@ -21,6 +21,8 @@ use zip::{read::ZipFile, result::ZipError, ZipArchive};
 pub mod fem_io;
 pub mod io;
 use io::{IOData, Properties, IO};
+mod switch;
+pub use switch::Switch;
 
 #[derive(Debug, thiserror::Error)]
 pub enum FemError {
@@ -563,6 +565,7 @@ impl FEM {
     {
         self.in_position::<U>().map(|i| self.keep_inputs(&[i]))
     }
+
     pub fn keep_input_by<U, F>(&mut self, pred: F) -> Option<&mut Self>
     where
         Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
@@ -678,6 +681,7 @@ impl FEM {
     }
     /// Return the static gain reduced to the turned-on inputs and outputs
     pub fn reduced_static_gain(&mut self) -> Option<na::DMatrix<f64>> {
+        log::info!("computing static gain");
         let n_io = self.n_io;
         let n_reduced_io = (self.n_inputs(), self.n_outputs());
         self.static_gain
@@ -725,6 +729,7 @@ impl FEM {
     }
     /// Returns the FEM static gain for the turned-on inputs and outputs
     pub fn static_gain(&mut self) -> na::DMatrix<f64> {
+        log::info!("computing DC dynamic gain");
         let forces_2_modes =
             na::DMatrix::from_row_slice(self.n_modes(), self.n_inputs(), &self.inputs2modes());
         let modes_2_nodes =
