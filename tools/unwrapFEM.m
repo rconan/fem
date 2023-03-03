@@ -16,6 +16,10 @@ else
     assert(mkdir(destinationFolder))
   end
 end
+folder = destinationFolder;
+destinationFolder = fullfile(destinationFolder,"rust");
+mkdir(destinationFolder)
+
 filename = "modal_state_space_model_2ndOrder";
 contents = load(fullfile(path_to_model,filename+".mat"));
 assert(~isempty(contents))
@@ -33,45 +37,59 @@ writeTable(contents.outputTable, out_file)
 contents = rmfield(contents, ["inputTable", "outputTable"]);
 
 mat_file = fullfile(destinationFolder, filename + "_mat.mat");
-inputs2ModalF = fullfile(destinationFolder,"inputs2ModalF.mat");
-modalDisp2Outputs = fullfile(destinationFolder,"modalDisp2Outputs.mat");
-static_gain_mat_file = fullfile(destinationFolder,"static_gain.mat");
+inputs2ModalF_file = fullfile(destinationFolder,"inputs2ModalF");
+modalDisp2Outputs_file = fullfile(destinationFolder,"modalDisp2Outputs");
+static_gain_mat_file = fullfile(destinationFolder,"static_gain");
 
-contents.inputs2ModalF = contents.inputs2ModalF';
-contents.modalDisp2Outputs = contents.modalDisp2Outputs';
+inputs2ModalF = contents.inputs2ModalF';
+contents = rmfield(contents,'inputs2ModalF');
+modalDisp2Outputs = contents.modalDisp2Outputs';
+contents = rmfield(contents,'modalDisp2Outputs');
 
 static_model_path = fullfile(path_to_model,'static_reduction_model.mat');
 if exist(static_model_path,'file')
     static_model = load(static_model_path);
     if isfield(static_model,"gainMatrixMountControlled")
         static_gain = static_model.gainMatrixMountControlled';
-        save(static_gain_mat_file,"static_gain")
+        clearvars('static_model')
+        check_size_save(static_gain_mat_file,static_gain,"static_gain");
     else
         static_gain = static_model.gainMatrix';
-        save(static_gain_mat_file,"static_gain")
+        clearvars('static_model')   
+        check_size_save(static_gain_mat_file,static_gain,"static_gain");
     end
+    clearvars('static_gain')
     save(mat_file, '-struct',...
         'contents','eigenfrequencies','proportionalDampingVec',...
         'modelDescription')
-    save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
-    save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
-    zip(fullfile(destinationFolder, filename + ".zip"),...
-        [in_file,out_file,mat_file,inputs2ModalF,modalDisp2Outputs,static_gain_mat_file])
-    delete(static_gain_mat_file)
+    clearvars('contents')
+
+    check_size_save(inputs2ModalF_file,...
+        inputs2ModalF,"inputs2ModalF");
+    clearvars('inputs2ModalF')
+
+    check_size_save(modalDisp2Outputs_file,...
+        modalDisp2Outputs,"modalDisp2Outputs");
+    clearvars('modalDisp2Outputs')
+
+    zip(fullfile(folder, filename + ".zip"),destinationFolder)
 else
     save(mat_file, '-struct','contents', ...
         'eigenfrequencies','proportionalDampingVec','modelDescription')
-    save(inputs2ModalF, '-struct',"contents",'inputs2ModalF')
-    save(modalDisp2Outputs, '-struct','contents','modalDisp2Outputs')
-    zip(fullfile(destinationFolder, filename + ".zip"),...
-        [in_file,out_file,mat_file,inputs2ModalF,modalDisp2Outputs])
+    clearvars('contents')
+
+    check_size_save(inputs2ModalF_file,...
+        inputs2ModalF,"inputs2ModalF");
+    clearvars('inputs2ModalF')
+
+    check_size_save(modalDisp2Outputs_file,...
+        modalDisp2Outputs,"modalDisp2Outputs");
+    clearvars('modalDisp2Outputs')
+
+    zip(fullfile(folder, filename + ".zip"),destinationFolder)
 end
 
-delete(in_file)
-delete(out_file)
-delete(mat_file)
-delete(inputs2ModalF)
-delete(modalDisp2Outputs)
+rmdir(destinationFolder,'s');
 
   function writeTable(t, fn)
     % save table in parquet format
@@ -101,4 +119,35 @@ delete(modalDisp2Outputs)
       ["group", "index", "description", "X", "Y", "Z", "csLabel"]);
     parquetwrite(fn, tnew)
   end
+
+    function mat_file = check_size_save(mat_file,v,name)
+        s = whos(name);
+        limit = 2^30*2;
+        if s.bytes>limit 
+            [n,m] = size(v);
+            b = s.bytes;
+            mm = m;
+            count = 1;
+            while b>limit
+                mm = ceil(mm/2);
+                b = mm*n*8;
+                count = count * 2;
+            end
+            i0 = 1;
+            mkdir(fullfile(mat_file+'.mat'))
+            for i = 1:count
+                i1 = i0 + mm - 1;
+                if i1>m
+                    i1 = m;
+                end
+                slice = v(:,i0:i1);
+                file_name = fullfile(mat_file+'.mat',sprintf('slice_%d',i));
+                save(file_name,"slice");
+                i0 = i1 + 1;
+            end
+        else
+            save(mat_file,name);
+        end
+    end
+
 end

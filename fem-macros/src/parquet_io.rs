@@ -145,7 +145,7 @@ fn get_fem_io(
 ) -> Result<(Vec<Literal>, Vec<Ident>), Error> {
     println!("FEM_{}PUTS", fem_io.to_uppercase());
     let mut input_file = zip_file.by_name(&format!(
-        "modal_state_space_model_2ndOrder_{}.parquet",
+        "rust/modal_state_space_model_2ndOrder_{}.parquet",
         fem_io
     ))?;
     let mut contents: Vec<u8> = Vec::new();
