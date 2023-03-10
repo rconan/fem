@@ -1,5 +1,6 @@
 use crate::{fem_io, Result, FEM};
 
+/// Select/deselect FEM inputs/outputs
 #[derive(Debug, Clone, Copy)]
 pub enum Switch {
     On,
@@ -7,6 +8,9 @@ pub enum Switch {
 }
 
 impl FEM {
+    /// Inputs on/off switch
+    ///
+    /// Either flips all inputs if id is [None] or only the inputs specified with `id`
     pub fn switch_inputs(&mut self, switch: Switch, id: Option<&[usize]>) -> &mut Self {
         for i in id
             .map(|i| i.to_vec())
@@ -25,6 +29,9 @@ impl FEM {
         }
         self
     }
+    /// Outputs on/off switch
+    ///
+    /// Either flips all outputs if id is [None] or only the outputs specified with `id`
     pub fn switch_outputs(&mut self, switch: Switch, id: Option<&[usize]>) -> &mut Self {
         for i in id
             .map(|i| i.to_vec())
@@ -43,6 +50,9 @@ impl FEM {
         }
         self
     }
+    /// Input on/off switch
+    ///
+    /// Flips input of type `U`
     pub fn switch_input<U>(&mut self, switch: Switch) -> Option<&mut Self>
     where
         Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
@@ -50,6 +60,9 @@ impl FEM {
         self.in_position::<U>()
             .map(|i| self.switch_inputs(switch, Some(&[i])))
     }
+    /// Output on/off switch
+    ///
+    /// Flips output of type `U`
     pub fn switch_output<U>(&mut self, switch: Switch) -> Option<&mut Self>
     where
         Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
@@ -57,6 +70,9 @@ impl FEM {
         self.out_position::<U>()
             .map(|i| self.switch_outputs(switch, Some(&[i])))
     }
+    /// Inputs on/off switch
+    ///
+    /// Flips  inputs with the given names
     pub fn switch_inputs_by_name<S: Into<String>>(
         &mut self,
         names: Vec<S>,
@@ -69,6 +85,9 @@ impl FEM {
         }
         Ok(self)
     }
+    /// Outputs on/off switch
+    ///
+    /// Flips outputs with the given names
     pub fn switch_outputs_by_name<S: Into<String>>(
         &mut self,
         names: Vec<S>,
