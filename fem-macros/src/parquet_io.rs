@@ -109,7 +109,16 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
                         .iter()
                         .map(|&v| (Literal::string(v), Ident::new(v, Span::call_site())))
                         .unzip();
-                build_fem_io(Ident::new("Inputs", Span::call_site()), names, variants)
+                let io = build_fem_io(Ident::new("Inputs", Span::call_site()), names, variants);
+                quote!(
+                    impl TryFrom<String> for Box<dyn GetIn> {
+                       type Error = FemError;
+                       fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+                            Err(FemError::Convert(value))
+                       }
+                    }
+                    #io
+                )
             },
             {
                 let (names, variants): (Vec<_>, Vec<_>) = [
@@ -120,7 +129,16 @@ pub fn ad_hoc_macro(_item: TokenStream) -> TokenStream {
                 .iter()
                 .map(|&v| (Literal::string(v), Ident::new(v, Span::call_site())))
                 .unzip();
-                build_fem_io(Ident::new("Outputs", Span::call_site()), names, variants)
+                let io = build_fem_io(Ident::new("Outputs", Span::call_site()), names, variants);
+                quote!(
+                    impl TryFrom<String> for Box<dyn GetOut> {
+                       type Error = FemError;
+                       fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+                            Err(FemError::Convert(value))
+                       }
+                    }
+                    #io
+                )
             },
         )
     };
