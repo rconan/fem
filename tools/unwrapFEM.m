@@ -21,6 +21,7 @@ destinationFolder = fullfile(destinationFolder,"rust");
 mkdir(destinationFolder)
 
 filename = "modal_state_space_model_2ndOrder";
+sprintf("loading %s", filename);
 contents = load(fullfile(path_to_model,filename+".mat"));
 assert(~isempty(contents))
 names = fieldnames(contents);
@@ -48,6 +49,7 @@ contents = rmfield(contents,'modalDisp2Outputs');
 
 static_model_path = fullfile(path_to_model,'static_reduction_model.mat');
 if exist(static_model_path,'file')
+    sprintf("loading %s", static_model_path);
     static_model = load(static_model_path);
     if isfield(static_model,"gainMatrixMountControlled")
         static_gain = static_model.gainMatrixMountControlled';
@@ -59,6 +61,7 @@ if exist(static_model_path,'file')
         check_size_save(static_gain_mat_file,static_gain,"static_gain");
     end
     clearvars('static_gain')
+    sprintf("writing %s", mat_file);
     save(mat_file, '-struct',...
         'contents','eigenfrequencies','proportionalDampingVec',...
         'modelDescription')
@@ -72,6 +75,7 @@ if exist(static_model_path,'file')
         modalDisp2Outputs,"modalDisp2Outputs");
     clearvars('modalDisp2Outputs')
 
+    sprintf("zipping %s", destinationFolder);
     zip(fullfile(folder, filename + ".zip"),destinationFolder)
 else
     save(mat_file, '-struct','contents', ...
@@ -86,6 +90,7 @@ else
         modalDisp2Outputs,"modalDisp2Outputs");
     clearvars('modalDisp2Outputs')
 
+    sprintf("zipping %s", destinationFolder);
     zip(fullfile(folder, filename + ".zip"),destinationFolder)
 end
 
@@ -142,10 +147,12 @@ rmdir(destinationFolder,'s');
                 end
                 slice = v(:,i0:i1);
                 file_name = fullfile(mat_file+'.mat',sprintf('slice_%d',i));
+                sprintf("writing %s", file_name);
                 save(file_name,"slice");
                 i0 = i1 + 1;
             end
         else
+            sprintf("writing %s", mat_file);
             save(mat_file,name);
         end
     end
