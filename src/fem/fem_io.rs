@@ -17,7 +17,18 @@ use super::{
 use nalgebra::DMatrix;
 use serde::{Deserialize, Serialize};
 
-fem_macros::ad_hoc! {}
+pub trait FemIo<U> {
+    fn position(&self) -> Option<usize>;
+}
+type Item = (String, Vec<IO>);
+
+//fem_macros::ad_hoc! {}
+include!(concat!(env!("OUT_DIR"), "/fem_actors_inputs.rs"));
+include!(concat!(env!("OUT_DIR"), "/fem_actors_outputs.rs"));
+include!(concat!(env!("OUT_DIR"), "/fem_get_in.rs"));
+include!(concat!(env!("OUT_DIR"), "/fem_get_out.rs"));
+include!(concat!(env!("OUT_DIR"), "/fem_inputs.rs"));
+include!(concat!(env!("OUT_DIR"), "/fem_outputs.rs"));
 
 #[derive(Serialize, Deserialize)]
 pub struct SplitFem<U> {

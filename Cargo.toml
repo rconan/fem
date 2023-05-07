@@ -66,5 +66,13 @@ anyhow = "1.0.51"
 parquet.workspace = true
 arrow.workspace = true
 
+[build-dependencies]
+anyhow = "1.0.51"
+zip.workspace = true
+arrow.workspace = true
+parquet.workspace = true
+bytes.workspace = true
+thiserror = { version = "1.0.30" }
+
 [package.metadata.docs.rs]
 no-default-features = true
