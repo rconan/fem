@@ -1,22 +1,17 @@
 //! # FEM inputs/outputs definitions
 
-use std::{
-    any::{type_name, Any},
-    fmt,
-    fmt::Debug,
-    marker::PhantomData,
-    ops::Range,
-};
+use std::{any::Any, fmt, fmt::Debug, marker::PhantomData, ops::Range};
 
 use crate::FEM;
 
 use super::io::IO;
+use gmt_dos_clients::interface::UniqueIdentifier;
 use nalgebra::DMatrix;
 
 /// Find the index corresponding to `U` in the [FEM] [Inputs] and [Outputs] vectors
 ///
 /// `U` is either an [actors_inputs] or [actors_outputs].
-pub trait FemIo<U> {
+pub trait FemIo<U: UniqueIdentifier> {
     /// Returns the index position
     fn position(&self) -> Option<usize>;
 }
@@ -44,18 +39,28 @@ mod outputs {
     include!(concat!(env!("OUT_DIR"), "/fem_get_out.rs"));
 }
 pub use inputs::{actors_inputs, Inputs};
-pub use outputs::{actors_outputs, Outputs};
+pub use outputs::{actors_outputs::*, Outputs};
 
 /// Hold the range of indices corresponding to `U` in the [FEM] [Inputs] and [Outputs] vectors
 ///
 /// `U` is either an [actors_inputs] or [actors_outputs].
-#[cfg_attr(features = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct SplitFem<U> {
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone)]
+pub struct SplitFem<U: UniqueIdentifier> {
     range: Range<usize>,
     io: PhantomData<U>,
 }
 
-impl<U> SplitFem<U> {
+impl<U: UniqueIdentifier> From<&SplitFem<U>> for SplitFem<U> {
+    fn from(value: &SplitFem<U>) -> Self {
+        SplitFem {
+            range: value.range.clone(),
+            io: PhantomData,
+        }
+    }
+}
+
+impl<U: UniqueIdentifier> SplitFem<U> {
     /// Creates a new [SplitFem] object
     pub fn new() -> Self {
         Self {
@@ -72,14 +77,14 @@ impl<U> SplitFem<U> {
         &self.range
     }
 }
-impl<U> Debug for SplitFem<U> {
+impl<U: UniqueIdentifier> Debug for SplitFem<U> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct(&format!("SplitFem<{}>", self.fem_type()))
             .field("range", &self.range)
             .finish()
     }
 }
-impl<U> Default for SplitFem<U> {
+impl<U: UniqueIdentifier> Default for SplitFem<U> {
     fn default() -> Self {
         Self::new()
     }
@@ -90,7 +95,7 @@ pub trait SetRange {
     /// Sets the range
     fn set_range(&mut self, start: usize, end: usize);
 }
-impl<U> SetRange for SplitFem<U> {
+impl<U: UniqueIdentifier> SetRange for SplitFem<U> {
     fn set_range(&mut self, start: usize, end: usize) {
         self.range = Range { start, end };
     }
@@ -109,7 +114,7 @@ pub trait GetIn: SetRange + Debug + Send + Sync {
     /// Returns the input position in the FEM [Inputs] vector
     fn position(&self, fem: &Vec<Option<Inputs>>) -> Option<usize>;
 }
-impl<U: 'static + Send + Sync> GetIn for SplitFem<U>
+impl<U: 'static + UniqueIdentifier + Send + Sync> GetIn for SplitFem<U>
 where
     Vec<Option<Inputs>>: FemIo<U>,
 {
@@ -134,6 +139,34 @@ where
         <Vec<Option<Inputs>> as FemIo<U>>::position(inputs)
     }
 }
+impl<U: 'static + UniqueIdentifier + Send + Sync> SplitFem<U> {
+    pub fn get_in(object: &Box<dyn GetIn>) -> Option<Self> {
+        object.as_any().downcast_ref::<Self>().map(|x| x.into())
+    }
+    pub fn get_out(object: &Box<dyn GetOut>) -> Option<Self> {
+        object.as_any().downcast_ref::<Self>().map(|x| x.into())
+    }
+}
+
+/* #[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Box<dyn GetIn> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        {
+            if let Ok(x) = SplitFem::<actors_inputs::MCM2S7VCDeltaF>::deserialize(deserializer) {
+                return Ok(Box::new(x));
+            }
+        }
+        if let Ok(x) = SplitFem::<actors_inputs::MCM2S1VCDeltaF>::deserialize(deserializer) {
+            return Ok(Box::new(x));
+        }
+        Err(serde::de::Error::custom(
+            "failed deserialize into `SplitFem<U>` with `U` as actors inputs",
+        ))
+    }
+} */
 /// Interface between the FEM [Outputs] and the [DOS actors outputs](actors_outputs)
 pub trait GetOut: SetRange + Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;
@@ -148,7 +181,7 @@ pub trait GetOut: SetRange + Debug + Send + Sync {
     /// Returns the output position in the FEM [Outputs] vector
     fn position(&self, outputs: &Vec<Option<Outputs>>) -> Option<usize>;
 }
-impl<U: 'static + Send + Sync> GetOut for SplitFem<U>
+impl<U: 'static + UniqueIdentifier + Send + Sync> GetOut for SplitFem<U>
 where
     Vec<Option<Outputs>>: FemIo<U>,
 {
@@ -175,3 +208,10 @@ where
         <Vec<Option<Outputs>> as FemIo<U>>::position(outputs)
     }
 }
+
+/* #[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn serde()
+} */

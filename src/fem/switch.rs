@@ -1,3 +1,5 @@
+use gmt_dos_clients::interface::UniqueIdentifier;
+
 use crate::{fem_io, Result, FEM};
 
 /// Select/deselect FEM inputs/outputs
@@ -55,6 +57,7 @@ impl FEM {
     /// Flips input of type `U`
     pub fn switch_input<U>(&mut self, switch: Switch) -> Option<&mut Self>
     where
+        U: UniqueIdentifier,
         Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
     {
         self.in_position::<U>()
@@ -65,6 +68,7 @@ impl FEM {
     /// Flips output of type `U`
     pub fn switch_output<U>(&mut self, switch: Switch) -> Option<&mut Self>
     where
+        U: UniqueIdentifier,
         Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
     {
         self.out_position::<U>()
