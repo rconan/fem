@@ -53,6 +53,55 @@ impl<'a> Display for GetIO<'a> {
             }}
          }}
         ",io=self.kind,arms=arms)?;
+
+        let variants = self.variants.iter()
+        .map(|name|
+        format!(r#"
+        if let Some(x) = SplitFem::<{1}>::get_{0}(self) {{
+            return x.serialize(s);
+        }}
+        "#,
+            self.kind.to_lowercase(),name.variant()))
+        .collect::<Vec<String>>().join("\n");
+    write!(f,r##"
+#[cfg(feature = "serde")]
+impl serde::Serialize for Box<dyn Get{io}> {{
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {{
+        {variants}
+        Err(serde::ser::Error::custom(
+            "failed to downcast `SplitFem<U>` with `U` as actors inputs",
+        ))
+    }}
+}}
+    "##,io=self.kind,variants=variants)?;
+
+/*     let variants = self.variants.iter()
+    .map(|name|
+    format!(r#"
+    if let Ok(x) = SplitFem::<{0}>::deserialize(deserializer) {{
+        return Ok(Box::new(x));
+    }}
+    "#,
+        name.variant()))
+    .collect::<Vec<String>>().join("\n");
+write!(f,r##"
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Box<dyn Get{io}> {{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {{
+        {variants}
+        Err(serde::de::Error::custom(
+            "failed deserialize into `SplitFem<U>` with `U` as actors inputs",
+        ))
+    }}
+}}
+    "##,io=self.kind,variants=variants)?; */
+
         Ok(())
     }
 } 
