@@ -7,8 +7,6 @@ use bytes::Bytes;
 use matio_rs::{MatFile, MatioError};
 use nalgebra as na;
 use parquet::{arrow::arrow_reader::ParquetRecordBatchReaderBuilder, errors::ParquetError};
-use serde::Deserialize;
-use serde_pickle as pkl;
 use std::{
     collections::HashMap,
     env, fmt,
@@ -262,43 +260,45 @@ fn read_outputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Ou
 }
 
 /// GMT Finite Element Model
-#[derive(Deserialize, Debug, Clone, Default)]
+#[cfg_attr(features = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Default)]
 pub struct FEM {
     /// Model info
-    #[serde(rename = "modelDescription")]
+    #[cfg_attr(features = "serde", serde(rename = "modelDescription"))]
     pub model_description: String,
     /// inputs properties
     pub inputs: Vec<Option<fem_io::Inputs>>,
     /// outputs properties
     pub outputs: Vec<Option<fem_io::Outputs>>,
     /// mode shapes eigen frequencies `[Hz]`
-    #[serde(rename = "eigenfrequencies")]
+    #[cfg_attr(features = "serde", serde(rename = "eigenfrequencies"))]
     pub eigen_frequencies: Vec<f64>,
     /// inputs forces to modal forces matrix `[n_modes,n_inputs]` (row wise)
-    #[serde(rename = "inputs2ModalF")]
+    #[cfg_attr(features = "serde", serde(rename = "inputs2ModalF"))]
     pub inputs_to_modal_forces: Vec<f64>,
     /// mode shapes to outputs nodes `[n_outputs,n_modes]` (row wise)
-    #[serde(rename = "modalDisp2Outputs")]
+    #[cfg_attr(features = "serde", serde(rename = "modalDisp2Outputs"))]
     pub modal_disp_to_outputs: Vec<f64>,
     /// mode shapes damping coefficients
-    #[serde(rename = "proportionalDampingVec")]
+    #[cfg_attr(features = "serde", serde(rename = "proportionalDampingVec"))]
     pub proportional_damping_vec: Vec<f64>,
-    #[serde(rename = "gainMatrix")]
+    #[cfg_attr(features = "serde", serde(rename = "gainMatrix"))]
     pub static_gain: Option<Vec<f64>>,
     /// number of inputs and outputs before any model reduction
-    #[serde(skip)]
+    #[cfg_attr(features = "serde", serde(skip))]
     pub n_io: (usize, usize),
-    #[serde(skip)]
+    #[cfg_attr(features = "serde", serde(skip))]
     model: String,
 }
 impl FEM {
     /// Loads a FEM model, saved in a second order form, from a pickle file
     ///
+    #[cfg(features = "serde")]
     pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM> {
         println!("Loading FEM from {:?}", path.as_ref());
         let file = File::open(&path)?;
         let v: serde_pickle::Value = serde_pickle::from_reader(file)?;
-        let mut fem: FEM = pkl::from_value(v)?;
+        let mut fem: FEM = serde_pickle::from_value(v)?;
         fem.n_io = (fem.n_inputs(), fem.n_outputs());
         fem.model = path.as_ref().to_str().unwrap().to_string();
         Ok(fem)
@@ -389,6 +389,7 @@ impl FEM {
     /// Loads FEM static solution gain matrix
     ///
     /// The gain is loaded from a pickle file "static_reduction_model.73.pkl" located in a directory given by either the `FEM_REPO` or the `STATIC_FEM_REPO` environment variable, `STATIC_FEM_REPO` is tried first and if it failed then `FEM_REPO` is checked
+    #[cfg(features = "serde")]
     pub fn static_from_env(self) -> Result<Self> {
         let fem_repo = env::var("STATIC_FEM_REPO").or(env::var("FEM_REPO"))?;
         let path = Path::new(&fem_repo).join("static_reduction_model.73.pkl");

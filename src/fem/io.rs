@@ -1,13 +1,12 @@
-use serde::Deserialize;
-
 /// Fem input/output data properties
-#[derive(Deserialize, Debug, Clone, Default)]
+#[cfg_attr(features = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Default)]
 pub struct Properties {
-    #[serde(rename = "nodeID")]
+    #[cfg_attr(features = "serde", serde(rename = "nodeID"))]
     pub node_id: Option<Vec<u32>>,
-    #[serde(rename = "csLabel")]
+    #[cfg_attr(features = "serde", serde(rename = "csLabel"))]
     pub cs_label: Option<String>,
-    #[serde(rename = "csNumber")]
+    #[cfg_attr(features = "serde", serde(rename = "csNumber"))]
     pub cs_number: Option<Vec<u32>>,
     pub coefficients: Option<Vec<f64>>,
     pub location: Option<Vec<f64>>,
@@ -16,11 +15,12 @@ pub struct Properties {
     pub area: Option<Vec<f64>>,
 }
 /// Fem input/output data
-#[derive(Deserialize, Debug, Clone, Default)]
+#[cfg_attr(features = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Default)]
 pub struct IOData {
     #[allow(dead_code)]
     pub types: String,
-    #[serde(rename = "exciteIDs")]
+    #[cfg_attr(features = "serde", serde(rename = "exciteIDs"))]
     #[allow(dead_code)]
     pub excite_ids: Option<Vec<u32>>,
     pub descriptions: String,
@@ -28,8 +28,9 @@ pub struct IOData {
     pub properties: Properties,
 }
 /// Fem input/output 2 states: on or off
-#[derive(Deserialize, Debug, Clone)]
-#[serde(untagged)]
+#[cfg_attr(features = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone)]
+#[cfg_attr(features = "serde", serde(untagged))]
 pub enum IO {
     On(IOData),
     Off(IOData),
