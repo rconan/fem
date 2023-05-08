@@ -260,7 +260,7 @@ fn read_outputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Ou
 }
 
 /// GMT Finite Element Model
-#[cfg_attr(features = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Default)]
 pub struct FEM {
     /// Model info

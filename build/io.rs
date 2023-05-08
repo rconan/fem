@@ -222,7 +222,7 @@ impl<'a> IO<'a> {
                 format!(
                     r##"
             #[doc = "{0}"]
-            #[cfg_attr(features="serde", serde(rename = "{0}"))]
+            #[cfg_attr(feature="serde", serde(rename = "{0}"))]
             {1}(Vec<IO>)
         "##,
                     name,
@@ -233,7 +233,7 @@ impl<'a> IO<'a> {
             .join(",\n");
         format!(
             r##"
-        #[cfg_attr(features="serde",derive(serde::Serialize, serde::Deserialize))]
+        #[cfg_attr(feature="serde",derive(serde::Serialize, serde::Deserialize))]
         #[derive(Debug, Clone)]
         pub enum {io} {{
             {variants}
