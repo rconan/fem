@@ -1,6 +1,12 @@
 //! # FEM inputs/outputs definitions
 
-use std::{any::Any, fmt, fmt::Debug, marker::PhantomData, ops::Range};
+use std::{
+    any::{type_name, Any},
+    fmt,
+    fmt::Debug,
+    marker::PhantomData,
+    ops::Range,
+};
 
 use crate::FEM;
 
@@ -19,7 +25,7 @@ type Item = (String, Vec<IO>);
 
 //fem_macros::ad_hoc! {}
 mod inputs {
-    use super::{FemIo, GetIn, Item, SplitFem};
+    use super::{FemIo, GetIn, Item, SplitFem, SplitFemErased};
     use crate::{FemError, IOData, IO};
     pub mod actors_inputs {
         include!(concat!(env!("OUT_DIR"), "/fem_actors_inputs.rs"));
@@ -29,7 +35,7 @@ mod inputs {
     include!(concat!(env!("OUT_DIR"), "/fem_get_in.rs"));
 }
 mod outputs {
-    use super::{FemIo, GetOut, Item, SplitFem};
+    use super::{FemIo, GetOut, Item, SplitFem, SplitFemErased};
     use crate::{FemError, IOData, IO};
     pub mod actors_outputs {
         include!(concat!(env!("OUT_DIR"), "/fem_actors_outputs.rs"));
@@ -39,16 +45,38 @@ mod outputs {
     include!(concat!(env!("OUT_DIR"), "/fem_get_out.rs"));
 }
 pub use inputs::{actors_inputs, Inputs};
-pub use outputs::{actors_outputs::*, Outputs};
+pub use outputs::{actors_outputs, Outputs};
 
 /// Hold the range of indices corresponding to `U` in the [FEM] [Inputs] and [Outputs] vectors
 ///
 /// `U` is either an [actors_inputs] or [actors_outputs].
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+//#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone)]
 pub struct SplitFem<U: UniqueIdentifier> {
     range: Range<usize>,
     io: PhantomData<U>,
+}
+#[cfg(feature = "serde")]
+impl<U: UniqueIdentifier> serde::Serialize for SplitFem<U> {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        SplitFemErased::from(self).serialize(s)
+    }
+}
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+struct SplitFemErased {
+    kind: String,
+    range: Range<usize>,
+}
+impl<U: UniqueIdentifier> From<&SplitFem<U>> for SplitFemErased {
+    fn from(value: &SplitFem<U>) -> Self {
+        Self {
+            kind: type_name::<U>().into(),
+            range: value.range.clone(),
+        }
+    }
 }
 
 impl<U: UniqueIdentifier> From<&SplitFem<U>> for SplitFem<U> {
@@ -65,6 +93,12 @@ impl<U: UniqueIdentifier> SplitFem<U> {
     pub fn new() -> Self {
         Self {
             range: Range::default(),
+            io: PhantomData,
+        }
+    }
+    pub fn ranged(range: Range<usize>) -> Self {
+        Self {
+            range,
             io: PhantomData,
         }
     }
@@ -148,25 +182,6 @@ impl<U: 'static + UniqueIdentifier + Send + Sync> SplitFem<U> {
     }
 }
 
-/* #[cfg(feature = "serde")]
-impl<'de> serde::Deserialize<'de> for Box<dyn GetIn> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        {
-            if let Ok(x) = SplitFem::<actors_inputs::MCM2S7VCDeltaF>::deserialize(deserializer) {
-                return Ok(Box::new(x));
-            }
-        }
-        if let Ok(x) = SplitFem::<actors_inputs::MCM2S1VCDeltaF>::deserialize(deserializer) {
-            return Ok(Box::new(x));
-        }
-        Err(serde::de::Error::custom(
-            "failed deserialize into `SplitFem<U>` with `U` as actors inputs",
-        ))
-    }
-} */
 /// Interface between the FEM [Outputs] and the [DOS actors outputs](actors_outputs)
 pub trait GetOut: SetRange + Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;

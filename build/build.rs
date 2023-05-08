@@ -78,15 +78,15 @@ impl serde::Serialize for Box<dyn Get{io}> {{
 }}
     "##,io=self.kind,variants=variants)?;
 
-/*     let variants = self.variants.iter()
+    let variants = self.variants.iter()
     .map(|name|
     format!(r#"
-    if let Ok(x) = SplitFem::<{0}>::deserialize(deserializer) {{
-        return Ok(Box::new(x));
-    }}
+    "{0}" => Ok(Box::new(SplitFem::<{1}>::ranged(
+        deser.range.clone(),
+    )))
     "#,
-        name.variant()))
-    .collect::<Vec<String>>().join("\n");
+        name,name.variant()))
+    .collect::<Vec<String>>().join(",\n");
 write!(f,r##"
 #[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for Box<dyn Get{io}> {{
@@ -94,13 +94,16 @@ impl<'de> serde::Deserialize<'de> for Box<dyn Get{io}> {{
     where
         D: serde::Deserializer<'de>,
     {{
-        {variants}
-        Err(serde::de::Error::custom(
-            "failed deserialize into `SplitFem<U>` with `U` as actors inputs",
-        ))
+        let deser = SplitFemErased::deserialize(deserializer)?;
+        match deser.kind.as_str() {{
+            {variants},
+            _ => Err(serde::de::Error::custom(
+                "failed deserialize into `SplitFem<U>` with `U` as actors inputs",
+            ))
+        }}
     }}
 }}
-    "##,io=self.kind,variants=variants)?; */
+    "##,io=self.kind,variants=variants)?;
 
         Ok(())
     }
