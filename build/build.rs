@@ -72,7 +72,7 @@ impl serde::Serialize for Box<dyn Get{io}> {{
     {{
         {variants}
         Err(serde::ser::Error::custom(
-            "failed to downcast `SplitFem<U>` with `U` as actors inputs",
+            "failed to downcast `SplitFem<U>` with `U` as actors {io}puts",
         ))
     }}
 }}
@@ -81,11 +81,11 @@ impl serde::Serialize for Box<dyn Get{io}> {{
     let variants = self.variants.iter()
     .map(|name|
     format!(r#"
-    "{0}" => Ok(Box::new(SplitFem::<{1}>::ranged(
+    "{0}" => Ok(Box::new(SplitFem::<{0}>::ranged(
         deser.range.clone(),
     )))
     "#,
-        name,name.variant()))
+        name.variant()))
     .collect::<Vec<String>>().join(",\n");
 write!(f,r##"
 #[cfg(feature = "serde")]
@@ -94,11 +94,11 @@ impl<'de> serde::Deserialize<'de> for Box<dyn Get{io}> {{
     where
         D: serde::Deserializer<'de>,
     {{
-        let deser = SplitFemErased::deserialize(deserializer)?;
+        let deser = super::SplitFemErased::deserialize(deserializer)?;
         match deser.kind.as_str() {{
             {variants},
             _ => Err(serde::de::Error::custom(
-                "failed deserialize into `SplitFem<U>` with `U` as actors inputs",
+                "failed to deserialize into `SplitFem<U>` with `U` as actors {io}puts",
             ))
         }}
     }}

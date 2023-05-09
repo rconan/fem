@@ -25,7 +25,7 @@ type Item = (String, Vec<IO>);
 
 //fem_macros::ad_hoc! {}
 mod inputs {
-    use super::{FemIo, GetIn, Item, SplitFem, SplitFemErased};
+    use super::{FemIo, GetIn, Item, SplitFem};
     use crate::{FemError, IOData, IO};
     pub mod actors_inputs {
         include!(concat!(env!("OUT_DIR"), "/fem_actors_inputs.rs"));
@@ -35,7 +35,7 @@ mod inputs {
     include!(concat!(env!("OUT_DIR"), "/fem_get_in.rs"));
 }
 mod outputs {
-    use super::{FemIo, GetOut, Item, SplitFem, SplitFemErased};
+    use super::{FemIo, GetOut, Item, SplitFem};
     use crate::{FemError, IOData, IO};
     pub mod actors_outputs {
         include!(concat!(env!("OUT_DIR"), "/fem_actors_outputs.rs"));
@@ -65,20 +65,21 @@ impl<U: UniqueIdentifier> serde::Serialize for SplitFem<U> {
         SplitFemErased::from(self).serialize(s)
     }
 }
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-struct SplitFemErased {
+#[cfg(feature = "serde")]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+pub struct SplitFemErased {
     kind: String,
     range: Range<usize>,
 }
+#[cfg(feature = "serde")]
 impl<U: UniqueIdentifier> From<&SplitFem<U>> for SplitFemErased {
     fn from(value: &SplitFem<U>) -> Self {
         Self {
-            kind: type_name::<U>().into(),
+            kind: type_name::<U>().split("::").last().unwrap().into(),
             range: value.range.clone(),
         }
     }
 }
-
 impl<U: UniqueIdentifier> From<&SplitFem<U>> for SplitFem<U> {
     fn from(value: &SplitFem<U>) -> Self {
         SplitFem {
@@ -223,10 +224,3 @@ where
         <Vec<Option<Outputs>> as FemIo<U>>::position(outputs)
     }
 }
-
-/* #[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn serde()
-} */

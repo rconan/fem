@@ -45,12 +45,8 @@ gmt_dos-clients = { version = "2.0.0", default-features = false, features = [
 
 [dev-dependencies]
 plotters = "0.3.0"
-#datax = { path = "../datax" }
-# rstar = "0.8.2"
 rayon = "1.5.0"
-# rustfft = "5.0.1"
 csv = "1.1.5"
-# spade = "1.8.2"
 triangle-rs = "0.1.2"
 complot = { version = "0.3.1", features = ["png"] }
 anyhow = "1.0.51"
