@@ -1,5 +1,6 @@
 use std::{fmt::Display, ops::Deref};
 
+#[derive(Debug, Default)]
 pub struct Name(pub(super) String);
 impl Deref for Name {
     type Target = str;
@@ -56,10 +57,16 @@ impl Name {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct Names(Vec<Name>);
 impl FromIterator<Name> for Names {
     fn from_iter<T: IntoIterator<Item = Name>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
+    }
+}
+impl FromIterator<String> for Names {
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|x| Name(x)).collect())
     }
 }
 impl Deref for Names {

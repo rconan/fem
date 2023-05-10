@@ -191,9 +191,8 @@ fn get_fem_io(zip_file: &mut ZipArchive<File>, fem_io: &str) -> Result<Names,Err
 }
 
 fn main() -> anyhow::Result<()> {
-    let Ok(fem_repo) = env::var("FEM_REPO") else {
-        panic!(r#"the environment variable "FEM_REPO" is not set"#)
-    };
+    let (input_names,output_names) : (Names,Names) = 
+    if let Ok(fem_repo) = env::var("FEM_REPO"){
     // Gets the FEM repository
     println!(
         "Building `fem::Inputs` and `fem::Outputs` enums to match inputs/outputs of FEM in {}",
@@ -211,18 +210,27 @@ fn main() -> anyhow::Result<()> {
     else {panic!("failed to parse FEM inputs variables")};
     let Ok(output_names) = get_fem_io(&mut zip_file, "out") 
     else {panic!("failed to parse FEM outputs variables")};
+    (input_names,output_names)
+} else {
+    let (inputs,outputs): (Vec<_>,Vec<_>) = (1..=5)
+    .map(|i| (String::from(format!("In{i}")),String::from(format!("Out{i}")))).unzip();
+    (inputs.into_iter().collect(),outputs.into_iter().collect())
+};
 
-    let out_dir = env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir);
+let out_dir = env::var_os("OUT_DIR").unwrap();
+let dest_path = Path::new(&out_dir);
 
-    fs::write(dest_path.join("fem_actors_inputs.rs"), format!("{}", input_names))?;
-    fs::write(dest_path.join("fem_actors_outputs.rs"), format!("{}", output_names))?;
+fs::write(dest_path.join("fem_actors_inputs.rs"), format!("{}", input_names))?;
+fs::write(dest_path.join("fem_actors_outputs.rs"), format!("{}", output_names))?;
 
-    fs::write(dest_path.join("fem_get_in.rs"), format!("{}", GetIO::new("In",&input_names)))?;
-    fs::write(dest_path.join("fem_get_out.rs"), format!("{}", GetIO::new("Out",&output_names)))?;
+fs::write(dest_path.join("fem_get_in.rs"), format!("{}", GetIO::new("In",&input_names)))?;
+fs::write(dest_path.join("fem_get_out.rs"), format!("{}", GetIO::new("Out",&output_names)))?;
 
-    fs::write(dest_path.join("fem_inputs.rs"), format!("{}", IO::new("Inputs",&input_names)))?;
-    fs::write(dest_path.join("fem_outputs.rs"), format!("{}", IO::new("Outputs",&output_names)))?;
+fs::write(dest_path.join("fem_inputs.rs"), format!("{}", IO::new("Inputs",&input_names)))?;
+fs::write(dest_path.join("fem_outputs.rs"), format!("{}", IO::new("Outputs",&output_names)))?;
+
+    println!("cargo:rerun-if-changed=build");
+    println!("cargo:rerun-if-env-changed=FEM_REPO");
 
     Ok(())
 }

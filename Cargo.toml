@@ -1,6 +1,6 @@
 [package]
 name = "gmt-fem"
-version = "3.0.0"
+version = "3.1.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2021"
 license = "MIT"
