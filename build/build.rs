@@ -195,7 +195,7 @@ fn main() -> anyhow::Result<()> {
     if let Ok(fem_repo) = env::var("FEM_REPO"){
     // Gets the FEM repository
     println!(
-        "Building `fem::Inputs` and `fem::Outputs` enums to match inputs/outputs of FEM in {}",
+        "cargo:warning=generating code based on the FEM inputs and outputs tables in {}",
         fem_repo
     );
     // Opens the mat file
@@ -212,6 +212,7 @@ fn main() -> anyhow::Result<()> {
     else {panic!("failed to parse FEM outputs variables")};
     (input_names,output_names)
 } else {
+    println!("cargo:warning=the FEM_REPO environment variable is not set, using dummy inputs and outputs instead");
     let (inputs,outputs): (Vec<_>,Vec<_>) = (1..=5)
     .map(|i| (String::from(format!("In{i}")),String::from(format!("Out{i}")))).unzip();
     (inputs.into_iter().collect(),outputs.into_iter().collect())
