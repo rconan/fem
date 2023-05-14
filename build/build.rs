@@ -1,6 +1,6 @@
 use std::{env, fs::{File, self}, path::Path, io::Read, fmt::Display};
 
-use arrow::{array::{StringArray, LargeStringArray}, record_batch::RecordBatchReader};
+use apache_arrow::{self as arrow,array::{StringArray, LargeStringArray}, record_batch::RecordBatchReader};
 use bytes::Bytes;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use zip::ZipArchive;

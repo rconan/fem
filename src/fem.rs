@@ -1,4 +1,4 @@
-use arrow::{
+use apache_arrow::{
     array::{Float64Array, LargeStringArray, StringArray},
     datatypes::SchemaRef,
     record_batch::{RecordBatch, RecordBatchReader},
