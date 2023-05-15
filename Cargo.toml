@@ -1,6 +1,6 @@
 [package]
 name = "gmt-fem"
-version = "3.1.1"
+version = "4.0.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2021"
 license = "MIT"
@@ -29,9 +29,6 @@ parquet.workspace = true
 matio-rs.workspace = true
 tempfile = "3.3.0"
 clap = { version = "4.1.1", features = ["derive"], optional = true }
-gmt_dos-clients = { workspace = true, default-features = false, features = [
-    "interface",
-] }
 
 [dev-dependencies]
 plotters = "0.3.0"

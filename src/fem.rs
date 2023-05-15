@@ -4,7 +4,6 @@ use apache_arrow::{
     record_batch::{RecordBatch, RecordBatchReader},
 };
 use bytes::Bytes;
-use gmt_dos_clients::interface::UniqueIdentifier;
 use matio_rs::{MatFile, MatioError};
 use nalgebra as na;
 use parquet::{arrow::arrow_reader::ParquetRecordBatchReaderBuilder, errors::ParquetError};
@@ -20,8 +19,6 @@ use zip::{read::ZipFile, result::ZipError, ZipArchive};
 pub mod fem_io;
 pub mod io;
 use io::{IOData, Properties, IO};
-mod switch;
-pub use switch::Switch;
 
 #[derive(Debug, thiserror::Error)]
 pub enum FemError {
@@ -569,70 +566,6 @@ impl FEM {
             )
         })
     }
-    pub fn in_position<U>(&self) -> Option<usize>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
-    {
-        <Vec<Option<fem_io::Inputs>> as fem_io::FemIo<U>>::position(&self.inputs)
-    }
-    pub fn keep_input<U>(&mut self) -> Option<&mut Self>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
-    {
-        self.in_position::<U>().map(|i| self.keep_inputs(&[i]))
-    }
-
-    pub fn keep_input_by<U, F>(&mut self, pred: F) -> Option<&mut Self>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
-        F: Fn(&IOData) -> bool + Copy,
-    {
-        self.in_position::<U>()
-            .map(|i| self.keep_inputs_by(&[i], pred))
-    }
-    pub fn out_position<U>(&self) -> Option<usize>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
-    {
-        <Vec<Option<fem_io::Outputs>> as fem_io::FemIo<U>>::position(&self.outputs)
-    }
-    pub fn keep_output<U>(&mut self) -> Option<&mut Self>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
-    {
-        self.out_position::<U>().map(|i| self.keep_outputs(&[i]))
-    }
-    pub fn keep_output_by<U, F>(&mut self, pred: F) -> Option<&mut Self>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
-        F: Fn(&IOData) -> bool + Copy,
-    {
-        self.out_position::<U>()
-            .map(|i| self.keep_outputs_by(&[i], pred))
-    }
-    /// Returns the inputs 2 modes transformation matrix for an input type
-    pub fn in2modes<U>(&self) -> Option<Vec<f64>>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
-    {
-        <Vec<Option<fem_io::Inputs>> as fem_io::FemIo<U>>::position(&self.inputs)
-            .and_then(|id| self.input2modes(id))
-    }
-    pub fn trim2in<U>(&self, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Inputs>>: fem_io::FemIo<U>,
-    {
-        <Vec<Option<fem_io::Inputs>> as fem_io::FemIo<U>>::position(&self.inputs)
-            .and_then(|id| self.trim2input(id, matrix))
-    }
     /// Returns the modes 2 outputs transformation matrix for the turned-on outputs
     pub fn modes2outputs(&mut self) -> Vec<f64> {
         let n = self.n_modes();
@@ -688,23 +621,7 @@ impl FEM {
             )
         })
     }
-    /// Returns the modes 2 outputs transformation matrix for an output type
-    pub fn modes2out<U>(&self) -> Option<Vec<f64>>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
-    {
-        <Vec<Option<fem_io::Outputs>> as fem_io::FemIo<U>>::position(&self.outputs)
-            .and_then(|id| self.modes2output(id))
-    }
-    pub fn trim2out<U>(&self, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>>
-    where
-        U: UniqueIdentifier,
-        Vec<Option<fem_io::Outputs>>: fem_io::FemIo<U>,
-    {
-        <Vec<Option<fem_io::Outputs>> as fem_io::FemIo<U>>::position(&self.outputs)
-            .and_then(|id| self.trim2output(id, matrix))
-    }
+
     /// Return the static gain reduced to the turned-on inputs and outputs
     pub fn reduced_static_gain(&mut self) -> Option<na::DMatrix<f64>> {
         log::info!("computing static gain");

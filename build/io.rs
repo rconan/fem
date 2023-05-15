@@ -247,13 +247,13 @@ impl<'a> IO<'a> {
 impl<'a> Display for IO<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", self.enum_io())?;
-        for variant in self.variants.iter() {
+/*         for variant in self.variants.iter() {
             writeln!(
                 f,
                 "{}",
                 variant.impl_enum_variant_for_io(self.kind.as_str())
             )?;
-        }
+        } */
         // impl #io
         writeln!(f, "impl {} {{", self.kind)?;
         writeln!(

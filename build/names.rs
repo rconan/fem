@@ -38,7 +38,7 @@ impl Name {
             variant = self.variant()
         )
     }
-    /// impl FemIo<{variant}> for Vec<Option<{io}>>
+/*     /// impl FemIo<{variant}> for Vec<Option<{io}>>
     ///
     /// io: Inputs|Outputs
     pub fn impl_enum_variant_for_io(&self, io: &str) -> String {
@@ -54,7 +54,7 @@ impl Name {
             variant = self.variant(),
             io = io
         )
-    }
+    } */
 }
 
 #[derive(Debug, Default)]
