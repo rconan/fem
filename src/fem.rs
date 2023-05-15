@@ -11,7 +11,7 @@ use std::{
     collections::HashMap,
     env, fmt,
     fs::File,
-    io::{Read, Write},
+    io::{BufReader, Read, Write},
     path::Path,
 };
 use zip::{read::ZipFile, result::ZipError, ZipArchive};
@@ -205,7 +205,7 @@ fn read_contents(mut zip_file: ZipFile) -> Result<Vec<u8>> {
     Ok(contents)
 }
 
-fn read_mat(zip_file: &mut ZipArchive<File>, name: &str) -> Result<Vec<f64>> {
+fn read_mat(zip_file: &mut ZipArchive<BufReader<File>>, name: &str) -> Result<Vec<f64>> {
     let mat_file_name = format!("rust/{}.mat", name);
     let mut i = 1;
     let mut maybe_data = None;
@@ -239,7 +239,7 @@ fn read_mat(zip_file: &mut ZipArchive<File>, name: &str) -> Result<Vec<f64>> {
     Ok(data)
 }
 
-fn read_inputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Inputs>>> {
+fn read_inputs(zip_file: &mut ZipArchive<BufReader<File>>) -> Result<Vec<Option<fem_io::Inputs>>> {
     log::info!(r#"reading inputs table from "modal_state_space_model_2ndOrder_in.parquet""#);
     read_contents(zip_file.by_name("rust/modal_state_space_model_2ndOrder_in.parquet")?)
         .and_then(|contents| read_table(contents.clone()).or_else(|_| read_table2(contents)))?
@@ -248,7 +248,9 @@ fn read_inputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Inp
         .collect()
 }
 
-fn read_outputs(zip_file: &mut ZipArchive<File>) -> Result<Vec<Option<fem_io::Outputs>>> {
+fn read_outputs(
+    zip_file: &mut ZipArchive<BufReader<File>>,
+) -> Result<Vec<Option<fem_io::Outputs>>> {
     log::info!(r#"reading outputs table from "modal_state_space_model_2ndOrder_out.parquet""#);
     read_contents(zip_file.by_name("rust/modal_state_space_model_2ndOrder_out.parquet")?)
         .and_then(|contents| read_table(contents.clone()).or_else(|_| read_table2(contents)))?
@@ -306,7 +308,8 @@ impl FEM {
         let path = path.as_ref();
         log::info!("Loading FEM from {path:?}");
         let file = File::open(path)?;
-        let mut zip_file = zip::ZipArchive::new(file)?;
+        let buffer = BufReader::new(file);
+        let mut zip_file = zip::ZipArchive::new(buffer)?;
 
         let inputs = read_inputs(&mut zip_file)?;
         let outputs = read_outputs(&mut zip_file)?;
