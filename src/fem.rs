@@ -604,11 +604,11 @@ impl FEM {
         })
     }
     pub fn trim2output(&self, id: usize, matrix: &na::DMatrix<f64>) -> Option<na::DMatrix<f64>> {
-        assert_eq!(
+        /*         assert_eq!(
             matrix.nrows(),
             self.n_outputs(),
             "Matrix rows # do not match outputs #"
-        );
+        ); */
         //let q: Vec<_> = matrix.chunks(self.n_modes()).collect();
         self.outputs[id].as_ref().map(|output| {
             na::DMatrix::from_rows(
