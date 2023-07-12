@@ -1,6 +1,6 @@
 [package]
 name = "gmt-fem"
-version = "4.0.2"
+version = "4.1.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
 edition = "2021"
 license = "MIT"
@@ -10,7 +10,6 @@ documentation = "https://docs.rs/gmt-fem"
 readme = "README.md"
 categories = ["science", "simulation"]
 keywords = ["telescope", "astronomy"]
-build = "build/build.rs"
 
 [dependencies]
 zip.workspace = true
@@ -44,6 +43,7 @@ parquet.workspace = true
 thiserror.workspace = true
 zip.workspace = true
 bytes.workspace = true
+gmt-fem-code-builder.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
