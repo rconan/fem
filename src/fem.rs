@@ -91,9 +91,9 @@ fn read<'a, T>(schema: &SchemaRef, table: &'a RecordBatch, col: &'a str) -> Resu
 where
     T: 'static,
 {
-    let Ok(idx )= schema.index_of(col) else {
-            panic!(r#"No "csLabel" in table!"#);
-        };
+    let Ok(idx) = schema.index_of(col) else {
+        panic!(r#"No "csLabel" in table!"#);
+    };
     table
         .column(idx)
         .as_any()
@@ -464,7 +464,7 @@ impl FEM {
         });
         self
     }
-    /// Filters the outputs according to some properties matching
+    /// Filters the inputs according to some properties matching
     pub fn filter_inputs_by<F>(&mut self, id: &[usize], pred: F) -> &mut Self
     where
         F: Fn(&IOData) -> bool + Copy,
@@ -476,6 +476,30 @@ impl FEM {
                         *io = io.clone().switch_off();
                         *io = io.clone().switch_on_by(pred);
                     })
+                }
+            }
+        });
+        self
+    }
+    /// Removes the inputs which properties do not match the predicate
+    pub fn remove_inputs_by<F>(&mut self, id: &[usize], pred: F) -> &mut Self
+    where
+        F: Fn(&IOData) -> bool + Copy,
+    {
+        self.inputs.iter_mut().enumerate().for_each(|(k, i)| {
+            if id.contains(&k) {
+                if let Some(i) = i.as_mut() {
+                    let io: Vec<_> = i
+                        .iter()
+                        .filter(|io| {
+                            pred(match io {
+                                IO::On(data) => data,
+                                IO::Off(data) => data,
+                            })
+                        })
+                        .cloned()
+                        .collect();
+                    i.set(io);
                 }
             }
         });
