@@ -264,36 +264,36 @@ fn read_outputs(
 #[derive(Debug, Clone, Default)]
 pub struct FEM {
     /// Model info
-    #[cfg_attr(features = "serde", serde(rename = "modelDescription"))]
+    #[cfg_attr(feature = "serde", serde(rename = "modelDescription"))]
     pub model_description: String,
     /// inputs properties
     pub inputs: Vec<Option<fem_io::Inputs>>,
     /// outputs properties
     pub outputs: Vec<Option<fem_io::Outputs>>,
     /// mode shapes eigen frequencies `[Hz]`
-    #[cfg_attr(features = "serde", serde(rename = "eigenfrequencies"))]
+    #[cfg_attr(feature = "serde", serde(rename = "eigenfrequencies"))]
     pub eigen_frequencies: Vec<f64>,
     /// inputs forces to modal forces matrix `[n_modes,n_inputs]` (row wise)
-    #[cfg_attr(features = "serde", serde(rename = "inputs2ModalF"))]
+    #[cfg_attr(feature = "serde", serde(rename = "inputs2ModalF"))]
     pub inputs_to_modal_forces: Vec<f64>,
     /// mode shapes to outputs nodes `[n_outputs,n_modes]` (row wise)
-    #[cfg_attr(features = "serde", serde(rename = "modalDisp2Outputs"))]
+    #[cfg_attr(feature = "serde", serde(rename = "modalDisp2Outputs"))]
     pub modal_disp_to_outputs: Vec<f64>,
     /// mode shapes damping coefficients
-    #[cfg_attr(features = "serde", serde(rename = "proportionalDampingVec"))]
+    #[cfg_attr(feature = "serde", serde(rename = "proportionalDampingVec"))]
     pub proportional_damping_vec: Vec<f64>,
-    #[cfg_attr(features = "serde", serde(rename = "gainMatrix"))]
+    #[cfg_attr(feature = "serde", serde(rename = "gainMatrix"))]
     pub static_gain: Option<Vec<f64>>,
     /// number of inputs and outputs before any model reduction
-    #[cfg_attr(features = "serde", serde(skip))]
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub n_io: (usize, usize),
-    #[cfg_attr(features = "serde", serde(skip))]
+    #[cfg_attr(feature = "serde", serde(skip))]
     model: String,
 }
 impl FEM {
     /// Loads a FEM model, saved in a second order form, from a pickle file
     ///
-    #[cfg(features = "serde")]
+    #[cfg(feature = "serde")]
     pub fn from_pickle<P: AsRef<Path>>(path: P) -> Result<FEM> {
         println!("Loading FEM from {:?}", path.as_ref());
         let file = File::open(&path)?;
@@ -390,7 +390,7 @@ impl FEM {
     /// Loads FEM static solution gain matrix
     ///
     /// The gain is loaded from a pickle file "static_reduction_model.73.pkl" located in a directory given by either the `FEM_REPO` or the `STATIC_FEM_REPO` environment variable, `STATIC_FEM_REPO` is tried first and if it failed then `FEM_REPO` is checked
-    #[cfg(features = "serde")]
+    #[cfg(feature = "serde")]
     pub fn static_from_env(self) -> Result<Self> {
         let fem_repo = env::var("STATIC_FEM_REPO").or(env::var("FEM_REPO"))?;
         let path = Path::new(&fem_repo).join("static_reduction_model.73.pkl");
