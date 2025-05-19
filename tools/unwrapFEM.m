@@ -112,11 +112,18 @@ rmdir(destinationFolder,'s');
       for jj = 1:t.size(ii)
         group(rr) = rowNames(ii);
         index(rr) = t.indices{ii}(jj);
-        description(rr) = t.descriptions{ii}(jj);
-        X(rr) = t.properties{ii}{jj}.location(1,1);
-        Y(rr) = t.properties{ii}{jj}.location(1,2);
-        Z(rr) = t.properties{ii}{jj}.location(1,3);
+        description(rr) = t.descriptions{ii}(jj);        
         csLabel(rr) = t.properties{ii}{jj}.csLabel(1);
+        try
+            X(rr) = t.properties{ii}{jj}.location(1,1);
+            Y(rr) = t.properties{ii}{jj}.location(1,2);
+            Z(rr) = t.properties{ii}{jj}.location(1,3);
+        catch 
+            warning("missing location property for %s",csLabel(rr));
+            X(rr) = 0;
+            Y(rr) = 0;
+            Z(rr) = 0;
+        end
         rr = rr + 1;
       end
     end
