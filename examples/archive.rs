@@ -7,7 +7,9 @@ use parquet::{
 use std::{fs::File, io::Read, path::Path, sync::Arc};
 
 fn main() -> anyhow::Result<()> {
-    let path = Path::new("/home/rconan/Dropbox/Documents/GMT/CFD/Baseline2021/validation/2021windloads/20211103_2333_MT_mount_zen_30_m1HFN_CFD/");
+    let path = Path::new(
+        "/home/rconan/Dropbox/Documents/GMT/CFD/Baseline2021/validation/2021windloads/20211103_2333_MT_mount_zen_30_m1HFN_CFD/",
+    );
     let file = File::open(path.join("modal_state_space_model_2ndOrder.zip"))?;
     let mut zip_file = zip::ZipArchive::new(file)?;
     for name in zip_file.file_names() {

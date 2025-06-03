@@ -1,6 +1,6 @@
-use fem::{DiscreteApproximation::*, StateSpace2x2, Bilinear};
-use plotters::prelude::*;
+use fem::{Bilinear, DiscreteApproximation::*, StateSpace2x2};
 use nalgebra as na;
+use plotters::prelude::*;
 
 fn main() {
     let omega = 12.5; //2.*std::f64::consts::PI*2.;
@@ -16,7 +16,7 @@ fn main() {
     println!("m: {:?}", bl.m);
 
     let u = vec![0.];
-    ss.x = na::Vector2::new(1.,0.);
+    ss.x = na::Vector2::new(1., 0.);
     let n = 10000;
     let l = (n as f64 * tau) * 1.1;
     /*(0..10000).for_each(|k| {
@@ -46,8 +46,8 @@ fn main() {
         &BLUE.mix(0.5),
     ))
     .unwrap()
-        .label(format!("{:?}",ss.method))
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE.mix(0.5)));
+    .label(format!("{:?}", ss.method))
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE.mix(0.5)));
     ctx.draw_series(LineSeries::new(
         (0..10000).map(|k| {
             let t = k as f64 * tau;
@@ -57,8 +57,8 @@ fn main() {
         &RED.mix(0.5),
     ))
     .unwrap()
-        .label("Expected")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED.mix(0.5)));
+    .label("Expected")
+    .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED.mix(0.5)));
     ctx.configure_series_labels()
         .border_style(&BLACK)
         .background_style(&WHITE.mix(0.5))

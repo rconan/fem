@@ -14,11 +14,11 @@ use std::{
     io::{BufReader, Read, Write},
     path::Path,
 };
-use zip::{read::ZipFile, result::ZipError, ZipArchive};
+use zip::{ZipArchive, read::ZipFile, result::ZipError};
 
 pub mod fem_io;
 pub mod io;
-use io::{IOData, Properties, IO};
+use io::{IO, IOData, Properties};
 
 #[derive(Debug, thiserror::Error)]
 pub enum FemError {
@@ -748,8 +748,9 @@ impl fmt::Display for FEM {
             "  - # of modes: {}\n  - first 5 eigen frequencies: {:9.3?}\n  - last 5 eigen frequencies: {:9.3?}\n  - damping coefficients [min;max]: [{:.4};{:.4}] \nINPUTS:\n{}\n{:>29}: [{:5}]\n OUTPUTS:\n{}\n{:>29}: [{:5}]",
             self.n_modes(),
             &self.eigen_frequencies[..5],
-            &self.eigen_frequencies[self.n_modes()-5..],
-            min_damping, max_damping,
+            &self.eigen_frequencies[self.n_modes() - 5..],
+            min_damping,
+            max_damping,
             ins,
             "Total",
             self.n_inputs(),

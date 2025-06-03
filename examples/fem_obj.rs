@@ -1,7 +1,7 @@
 use gmt_fem::{
+    FEM,
     dos::{DiscreteModalSolver, Exponential, Get, Set},
     fem_io::*,
-    FEM,
 };
 
 fn main() -> anyhow::Result<()> {
@@ -19,7 +19,7 @@ fn main() -> anyhow::Result<()> {
         .outs::<OSSGIR6d>()
         .build()?;
 
-    println!("{}",state_space_obj);
+    println!("{}", state_space_obj);
 
     println!("ins : {:?}", state_space_obj.ins);
     println!("outs: {:?}", state_space_obj.outs);

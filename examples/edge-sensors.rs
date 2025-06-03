@@ -1,6 +1,6 @@
 fn main() -> anyhow::Result<()> {
     let fem = gmt_fem::FEM::from_env()?; //.static_from_env()?;
-                                         //println!("{}", fem);
+    //println!("{}", fem);
     let locations: Vec<_> = fem.outputs[23]
         .as_ref()
         .unwrap()

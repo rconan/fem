@@ -4,7 +4,7 @@ macro_rules! count_tts {
 }
 fn main() {
     let a = count_tts!(0);
-    println!("a: {}",a);
+    println!("a: {}", a);
     let a = count_tts!(2 0);
-    println!("a: {}",a)
+    println!("a: {}", a)
 }

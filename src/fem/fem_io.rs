@@ -6,12 +6,12 @@ type Item = (String, Vec<IO>);
 
 mod inputs {
     use super::Item;
-    use crate::{FemError, IOData, IO};
+    use crate::{FemError, IO, IOData};
     include!(concat!(env!("OUT_DIR"), "/fem_inputs.rs"));
 }
 mod outputs {
     use super::Item;
-    use crate::{FemError, IOData, IO};
+    use crate::{FemError, IO, IOData};
     include!(concat!(env!("OUT_DIR"), "/fem_outputs.rs"));
 }
 pub use inputs::Inputs;

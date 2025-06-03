@@ -1,4 +1,4 @@
-use gmt_fem::{fem_io, Switch, FEM};
+use gmt_fem::{FEM, Switch, fem_io};
 
 #[test]
 fn keep_switch() -> anyhow::Result<()> {

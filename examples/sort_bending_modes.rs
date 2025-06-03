@@ -102,7 +102,7 @@ fn main() {
         .chunks(n_node)
         .flat_map(|mode| sorted_idx.iter().map(|&i| mode[i]).collect::<Vec<f64>>())
         .collect();
-   let sorted_bm = BendingModes {
+    let sorted_bm = BendingModes {
         nodes: sorted_nodes,
         modes: sorted_modes,
     };
@@ -116,9 +116,13 @@ fn main() {
     let fig = plt::png_canvas("examples/sorted_bending_modes.png");
     let mut ax = plt::chart([-4.5, 4.5, -4.5, 4.5], &fig);
     let (x, y): (Vec<f64>, Vec<f64>) = nodes.chunks(2).map(|xy| (xy[0], xy[1])).unzip();
-    let surface: Vec<f64> = sorted_bm.modes.chunks(n_node).take(1).flat_map(|x| x.to_vec()).collect();
+    let surface: Vec<f64> = sorted_bm
+        .modes
+        .chunks(n_node)
+        .take(1)
+        .flat_map(|x| x.to_vec())
+        .collect();
     tri.map(&x, &y, &surface.as_slice(), &mut ax);
-
 
     let filename = format!(
         "examples/bending_modes_{}.pkl",

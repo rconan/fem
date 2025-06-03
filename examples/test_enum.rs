@@ -1,4 +1,4 @@
-use serde::{Deserialize,Serialize};
+use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_pickle;
 use std::fs::File;
@@ -24,7 +24,7 @@ fn main() {
     serde_pickle::to_writer(&mut file, &m, true).unwrap();
 
     let file = File::open("examples/pymsg.pkl").unwrap();
-//    let d: Message = serde_pickle::from_reader(file).unwrap();
+    //    let d: Message = serde_pickle::from_reader(file).unwrap();
     let v: serde_pickle::Value = serde_pickle::from_reader(file).unwrap();
     let d: Message = serde_pickle::from_value(v).unwrap();
     println!("{:#?}", d);

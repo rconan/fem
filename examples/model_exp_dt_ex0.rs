@@ -1,7 +1,7 @@
 // Compare different model of tranformation of continuous second order ODE into a discrete state space model
 // Run with: `cargo run --release --example model_exp_dt_ex0 --features dos`
 
-use gmt_fem::dos::{Solver, Exponential, ExponentialMatrix};
+use gmt_fem::dos::{Exponential, ExponentialMatrix, Solver};
 
 const PI: f64 = 3.141592653589793;
 

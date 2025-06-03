@@ -1,8 +1,8 @@
 [package]
 name = "gmt-fem"
-version = "5.1.2"
+version = "5.2.0"
 authors = ["Rod Conan <rconan@gmto.org>"]
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "Giant Magellan Telescope Finite Element Model"
 repository = "https://github.com/rconan/fem"

@@ -1,4 +1,4 @@
-use fem::io::{IOData, IO};
+use fem::io::{IO, IOData};
 use fem_proc::ad_hoc;
 use serde;
 use serde::Deserialize;

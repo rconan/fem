@@ -7,8 +7,7 @@ struct FEM {
     modelDescription: String,
 }
 
-fn main() -> hdf5::Result<()>  {
+fn main() -> hdf5::Result<()> {
     let file = hdf5::File::open("examples/modal_state_space_model_2ndOrder.rs.mat")?;
     Ok(())
 }
-

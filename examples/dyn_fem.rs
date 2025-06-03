@@ -1,4 +1,4 @@
-use fem::{IOTraits, ToPickle, FEM};
+use fem::{FEM, IOTraits, ToPickle};
 //use nalgebra as na;
 //use rayon::prelude::*;
 use serde_pickle as pkl;
@@ -26,11 +26,11 @@ fn main() {
     let tic = Timer::tic();
     println!("Loading FEM ...");
     let mut fem = FEM::from_pkl("examples/modal_state_space_model_2ndOrder_v1.pkl").unwrap();
-    println!("FEM\n{}",fem);
+    println!("FEM\n{}", fem);
     tic.print_toc();
     fem.keep_input(4);
     fem.keep_output(24);
-    println!("FEM\n{}",fem);
+    println!("FEM\n{}", fem);
     fem.inputs2modes()
         .to_pickle("examples/forces_2_modes.pkl")
         .unwrap();
@@ -51,7 +51,7 @@ fn main() {
     let duration = 100.;
     let n = (duration * sampling) as usize;
     let mut y: Vec<Vec<f64>> = vec![vec![0.; fem.n_outputs()]; n];
-    
+
     println!("Running model ...");
     let tic = Timer::tic();
     y.iter_mut().for_each(|y_step| {

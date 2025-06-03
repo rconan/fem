@@ -1,7 +1,7 @@
 use gmt_fem::{
+    FEM,
     dos::{DiscreteModalSolver, ExponentialMatrix, Get, Set},
     fem_io::*,
-    FEM,
 };
 
 fn main() -> anyhow::Result<()> {

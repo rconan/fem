@@ -2,10 +2,10 @@ use geotrans::{Quaternion, Vector};
 use gmt_fem::FEM;
 use na::DMatrixSlice;
 use nalgebra as na;
-use spade::{delaunay::FloatDelaunayTriangulation, HasPosition};
+use spade::{HasPosition, delaunay::FloatDelaunayTriangulation};
 use std::{
     fs::File,
-    io::{prelude::*, BufWriter},
+    io::{BufWriter, prelude::*},
     path::Path,
     time::Instant,
 };
@@ -498,7 +498,9 @@ mod tests {
     }
     #[test]
     fn m1_s1_rbm() {
-        let fem_path = Path::new("/home/ubuntu/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl");
+        let fem_path = Path::new(
+            "/home/ubuntu/projects/ns-opm-im/data/20210802_0755_MT_mount_v202104_FSM/static_reduction_model.73.pkl",
+        );
         let mut fem = FEM::from_pickle(fem_path).unwrap();
         //    println!("{}", fem);
         let n_io = (fem.n_inputs(), fem.n_outputs());
