@@ -199,7 +199,7 @@ fn read_table2(contents: Vec<u8>) -> Result<Vec<(String, Vec<IO>)>> {
     Ok(sorted_map)
 }
 
-fn read_contents(mut zip_file: ZipFile) -> Result<Vec<u8>> {
+fn read_contents(mut zip_file: ZipFile<BufReader<File>>) -> Result<Vec<u8>> {
     let mut contents: Vec<u8> = Vec::new();
     zip_file.read_to_end(&mut contents)?;
     Ok(contents)
