@@ -651,7 +651,7 @@ impl FEM {
 
     /// Return the static gain reduced to the turned-on inputs and outputs
     pub fn reduced_static_gain(&mut self) -> Option<na::DMatrix<f64>> {
-        log::info!("computing static gain");
+        log::debug!("computing FEM static gain");
         let n_io = self.n_io;
         let n_reduced_io = (self.n_inputs(), self.n_outputs());
         self.static_gain
